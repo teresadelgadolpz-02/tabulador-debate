@@ -9,11 +9,9 @@
          CONFIG EMPRESA (EDITA AQUÍ)
          ========================= -->
     <script>
-      // ✅ Pon aquí la ruta REAL de tu logo en tu hosting (FTP).
-      // Ejemplos:
-      //   "/tabulador-app/logo.png"
-      //   "/logo.png"
-      //   "https://tudominio.com/logo.png"
+      // ✅ En GitHub Pages (mismo nivel que index.html): "./logo.jpg"
+      // ✅ En tu dominio con logo en raíz: "/logo.jpg"
+      // ✅ En URL externa: "https://tudominio.com/logo.jpg"
       window.COMPANY_LOGO_URL = "./logo.jpg";
       window.COMPANY_NAME = "Learn By Talking Formación";
     </script>
@@ -72,6 +70,7 @@
         border-radius: 10px;
         border: 1px solid #eee;
         background: #fff;
+        padding: 6px;
       }
 
       h1 {
@@ -258,6 +257,23 @@
         border-radius: 6px;
         color: #111;
       }
+
+      .stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .speakerRow {
+        display: grid;
+        grid-template-columns: 1fr 220px 140px;
+        gap: 10px;
+        align-items: center;
+      }
+      @media (max-width: 900px) {
+        .speakerRow {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
 
@@ -278,10 +294,14 @@
     </div>
 
     <script type="text/babel">
-      const { useEffect, useState } = React;
+      const { useEffect, useMemo, useState } = React;
 
-      // Pintar marca fija
+      // Pintar marca fija (robusto)
       document.getElementById("companyLogo").src = window.COMPANY_LOGO_URL || "";
+      document.getElementById("companyLogo").onerror = () => {
+        // si falla, ocultamos para que no quede el icono roto
+        document.getElementById("companyLogo").style.display = "none";
+      };
       document.getElementById("companyName").textContent =
         "Un proyecto de " + (window.COMPANY_NAME || "Learn By Talking Formación");
 
@@ -316,6 +336,25 @@
         return stored ? JSON.parse(stored.value) : [];
       }
 
+      const ROLE_OPTIONS = [
+        { value: "Introductor", label: "Introductor" },
+        { value: "Primer refutador", label: "Primer refutador" },
+        { value: "Segundo refutador", label: "Segundo refutador" },
+        { value: "Conclusor", label: "Conclusor" },
+        { value: "Libre", label: "Libre (5º orador)" }
+      ];
+
+      const TIEBREAK_OPTIONS = [
+        "Enfrentamiento directo > Ítems",
+        "Ítems > Enfrentamiento directo",
+        "Enfrentamiento directo > Ítems > Votos",
+        "Enfrentamiento directo > Votos > Ítems",
+        "Ítems > Enfrentamiento directo > Votos",
+        "Ítems > Votos > Enfrentamiento directo",
+        "Votos > Enfrentamiento directo > Ítems",
+        "Votos > Ítems > Enfrentamiento directo"
+      ];
+
       function DebateTabulator() {
         // ===== Auth =====
         const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -346,7 +385,10 @@
           tournamentSystem: "suizo",
           allowRepeatMatchups: false,
           numGroups: 4,
-          groupSize: 4
+          groupSize: 4,
+
+          speakersPerTeam: 2, // ✅ 2..5
+          tiebreak: "Ítems > Enfrentamiento directo" // ✅ selector como foto
         });
 
         const [teams, setTeams] = useState([]);
@@ -409,6 +451,34 @@
 
           ReactDOM.createRoot(node).render(<HeaderButtons />);
         }, [isAuthenticated, currentUser]);
+
+        // ===== Helpers Speakers =====
+        function makeDefaultSpeakers(n) {
+          const roles = ["Introductor", "Primer refutador", "Segundo refutador", "Conclusor", "Libre"];
+          return Array.from({ length: n }).map((_, i) => ({
+            id: uid() + i,
+            name: "",
+            role: roles[i] || "Libre",
+            points: 0
+          }));
+        }
+
+        function normalizeTeamsToSpeakersPerTeam(nextTeams, speakersPerTeam) {
+          const n = Math.max(2, Math.min(5, Number(speakersPerTeam || 2)));
+          return nextTeams.map((t) => {
+            const existing = Array.isArray(t.speakers) ? t.speakers : [];
+            const speakers = [...existing];
+
+            if (speakers.length < n) {
+              const add = makeDefaultSpeakers(n - speakers.length);
+              speakers.push(...add);
+            } else if (speakers.length > n) {
+              speakers.length = n;
+            }
+
+            return { ...t, speakers };
+          });
+        }
 
         // ===== Auth functions =====
         async function handleLogin() {
@@ -520,7 +590,10 @@
         function loadTournament(t) {
           setCurrentTournamentId(t.id);
           setConfig(t.config || config);
-          setTeams(t.teams || []);
+
+          const normalizedTeams = normalizeTeamsToSpeakersPerTeam(t.teams || [], (t.config?.speakersPerTeam ?? 2));
+          setTeams(normalizedTeams);
+
           setRounds(t.rounds || []);
           setRooms(t.rooms || []);
           setJudges(t.judges || []);
@@ -530,7 +603,7 @@
 
           showToast(
             "✅ Torneo cargado",
-            "Puedes continuar en ⚙️ Config, luego 👥 Equipos. También puedes añadir 🏫 Salas y 🧑‍⚖️ Jueces antes de generar 🧾 Rondas.",
+            "Sigue en ⚙️ Config para comprobar ajustes, luego 👥 Equipos. Puedes añadir 🏫 Salas y 🧑‍⚖️ Jueces antes de generar 🧾 Rondas.",
             5500
           );
         }
@@ -543,7 +616,7 @@
 
           showToast(
             "✅ Torneo creado correctamente",
-            "Siguiente paso: ve a ⚙️ Config para poner el nombre y ajustes, y después a 👥 Equipos para añadir participantes.",
+            "Siguiente paso: ve a ⚙️ Config (nombre, sistema, desempates, nº oradores) y después a 👥 Equipos.",
             6500
           );
         }
@@ -556,7 +629,10 @@
             tournamentSystem: "suizo",
             allowRepeatMatchups: false,
             numGroups: 4,
-            groupSize: 4
+            groupSize: 4,
+
+            speakersPerTeam: 2,
+            tiebreak: "Ítems > Enfrentamiento directo"
           });
           setTeams([]);
           setRounds([]);
@@ -586,18 +662,21 @@
 
         // ===== CRUD Teams =====
         function addTeam() {
+          const speakerCount = Math.max(2, Math.min(5, Number(config.speakersPerTeam || 2)));
           const newTeam = {
             id: uid(),
             name: `Equipo ${teams.length + 1}`,
             school: "",
-            speakers: ["", ""],
+            speakers: makeDefaultSpeakers(speakerCount),
+
+            // stats recalculados desde rondas
             points: 0,
             itemsWon: 0,
-            speakerPoints: 0,
+            votesWon: 0,
             opponents: [],
-            positions: { afavor: 0, enContra: 0 } // ✅ ya no gov/opp
+            positions: { afavor: 0, enContra: 0 }
           };
-          setTeams([...teams, newTeam]);
+          setTeams(normalizeTeamsToSpeakersPerTeam([...teams, newTeam], speakerCount));
         }
 
         function deleteTeam(id) {
@@ -608,12 +687,11 @@
           setTeams(teams.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
         }
 
-        function updateTeamSpeaker(id, idx, value) {
+        function updateSpeaker(teamId, speakerId, field, value) {
           setTeams(
             teams.map((t) => {
-              if (t.id !== id) return t;
-              const speakers = [...(t.speakers || ["", ""])];
-              speakers[idx] = value;
+              if (t.id !== teamId) return t;
+              const speakers = (t.speakers || []).map((s) => (s.id === speakerId ? { ...s, [field]: value } : s));
               return { ...t, speakers };
             })
           );
@@ -757,11 +835,7 @@
         }
 
         function generateSwissPairings() {
-          const sorted = [...teams].sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            if (b.itemsWon !== a.itemsWon) return b.itemsWon - a.itemsWon;
-            return (b.speakerPoints || 0) - (a.speakerPoints || 0);
-          });
+          const sorted = getStandings(); // ya aplica desempates
 
           const matches = [];
           const paired = new Set();
@@ -775,7 +849,7 @@
               const t1 = sorted[i];
               const t2 = sorted[j];
 
-              const canMatch = config.allowRepeatMatchups || !t1.opponents.includes(t2.id);
+              const canMatch = config.allowRepeatMatchups || !(t1.opponents || []).includes(t2.id);
               if (!canMatch) continue;
 
               const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
@@ -786,6 +860,8 @@
                 enContra: t1IsFavor ? t2.id : t1.id,
                 favorItems: null,
                 contraItems: null,
+                favorVotes: null,
+                contraVotes: null,
                 completed: false
               });
 
@@ -814,6 +890,8 @@
               enContra: t1IsFavor ? t2.id : t1.id,
               favorItems: null,
               contraItems: null,
+              favorVotes: null,
+              contraVotes: null,
               completed: false
             });
           }
@@ -849,7 +927,7 @@
               for (let j = i + 1; j < groupTeams.length; j++) {
                 const t1 = groupTeams[i];
                 const t2 = groupTeams[j];
-                if (t1.opponents.includes(t2.id)) continue;
+                if ((t1.opponents || []).includes(t2.id)) continue;
 
                 const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
 
@@ -859,6 +937,8 @@
                   enContra: t1IsFavor ? t2.id : t1.id,
                   favorItems: null,
                   contraItems: null,
+                  favorVotes: null,
+                  contraVotes: null,
                   completed: false,
                   groupId: group.id
                 });
@@ -913,50 +993,146 @@
           });
         }
 
-        // ===== Results =====
-        function recordResult(roundIdx, matchIdx, favorItems, contraItems) {
-          const newRounds = [...rounds];
-          const match = newRounds[roundIdx].matches[matchIdx];
-
-          match.favorItems = Number(favorItems);
-          match.contraItems = Number(contraItems);
-          match.completed = true;
-
-          const favorWins = match.favorItems > match.contraItems;
-          const contraWins = match.contraItems > match.favorItems;
-
-          const updatedTeams = teams.map((team) => {
-            if (team.id === match.aFavor) {
-              return {
-                ...team,
-                points: team.points + (favorWins ? 3 : contraWins ? 0 : 1),
-                itemsWon: team.itemsWon + (match.favorItems || 0),
-                opponents: [...team.opponents, match.enContra],
-                positions: { ...team.positions, afavor: (team.positions?.afavor || 0) + 1 }
-              };
-            }
-            if (team.id === match.enContra) {
-              return {
-                ...team,
-                points: team.points + (contraWins ? 3 : favorWins ? 0 : 1),
-                itemsWon: team.itemsWon + (match.contraItems || 0),
-                opponents: [...team.opponents, match.aFavor],
-                positions: { ...team.positions, enContra: (team.positions?.enContra || 0) + 1 }
-              };
-            }
-            return team;
+        // ===== Recalcular clasificación desde rondas (evita errores al editar resultados) =====
+        function recomputeTeamStats(baseTeams, allRounds) {
+          const map = new Map();
+          baseTeams.forEach((t) => {
+            map.set(t.id, {
+              ...t,
+              points: 0,
+              itemsWon: 0,
+              votesWon: 0,
+              opponents: [],
+              positions: { afavor: 0, enContra: 0 }
+            });
           });
 
-          setTeams(updatedTeams);
-          setRounds(newRounds);
+          for (const r of allRounds) {
+            for (const m of (r.matches || [])) {
+              if (!m) continue;
+              const A = map.get(m.aFavor);
+              const B = map.get(m.enContra);
+              if (!A || !B) continue;
+
+              // oponentes y posiciones (siempre que haya emparejamiento)
+              A.opponents = [...(A.opponents || []), B.id];
+              B.opponents = [...(B.opponents || []), A.id];
+              A.positions = { ...A.positions, afavor: (A.positions?.afavor || 0) + 1 };
+              B.positions = { ...B.positions, enContra: (B.positions?.enContra || 0) + 1 };
+
+              if (!m.completed) continue;
+              const aItems = Number(m.favorItems);
+              const bItems = Number(m.contraItems);
+              const aVotes = m.favorVotes === null || m.favorVotes === "" ? null : Number(m.favorVotes);
+              const bVotes = m.contraVotes === null || m.contraVotes === "" ? null : Number(m.contraVotes);
+
+              if (Number.isFinite(aItems)) A.itemsWon += aItems;
+              if (Number.isFinite(bItems)) B.itemsWon += bItems;
+
+              if (Number.isFinite(aVotes)) A.votesWon += aVotes;
+              if (Number.isFinite(bVotes)) B.votesWon += bVotes;
+
+              // puntos por debate (3-1-0)
+              const aWins = aItems > bItems;
+              const bWins = bItems > aItems;
+              if (aWins) {
+                A.points += 3;
+                B.points += 0;
+              } else if (bWins) {
+                B.points += 3;
+                A.points += 0;
+              } else {
+                A.points += 1;
+                B.points += 1;
+              }
+            }
+          }
+
+          return Array.from(map.values());
         }
 
+        // ===== Enfrentamiento directo (head-to-head) =====
+        function headToHead(Aid, Bid) {
+          // devuelve +1 si A gana a B, -1 si pierde, 0 si no hay/empate
+          for (const r of rounds) {
+            for (const m of (r.matches || [])) {
+              if (!m.completed) continue;
+
+              const isAB = (m.aFavor === Aid && m.enContra === Bid) || (m.aFavor === Bid && m.enContra === Aid);
+              if (!isAB) continue;
+
+              const aItems = Number(m.favorItems);
+              const bItems = Number(m.contraItems);
+              if (!Number.isFinite(aItems) || !Number.isFinite(bItems)) return 0;
+
+              // ojo: favor/contra depende de cómo se asignó
+              if (m.aFavor === Aid && m.enContra === Bid) {
+                if (aItems > bItems) return +1;
+                if (aItems < bItems) return -1;
+                return 0;
+              } else {
+                // Aid está en contra en ese match
+                if (bItems > aItems) return +1;
+                if (bItems < aItems) return -1;
+                return 0;
+              }
+            }
+          }
+          return 0;
+        }
+
+        // ===== Comparador según criterio de desempate =====
+        function compareTeams(a, b) {
+          // 1) puntos
+          if (b.points !== a.points) return b.points - a.points;
+
+          const chain = String(config.tiebreak || "Ítems > Enfrentamiento directo");
+
+          const evalToken = (token) => {
+            if (token === "Ítems") return b.itemsWon - a.itemsWon;
+            if (token === "Votos") return b.votesWon - a.votesWon;
+            if (token === "Enfrentamiento directo") return headToHead(a.id, b.id) * -1; // invertimos porque queremos que a quede antes si gana (+1)
+            return 0;
+          };
+
+          const parts = chain.split(">").map((p) => p.trim());
+          for (const p of parts) {
+            const v = evalToken(p);
+            if (v !== 0) return v;
+          }
+
+          // último: por nombre
+          return String(a.name || "").localeCompare(String(b.name || ""));
+        }
+
+        // ===== Standings con stats recalculados =====
+        const computedTeams = useMemo(() => {
+          // normalizamos oradores
+          const normalized = normalizeTeamsToSpeakersPerTeam(teams, config.speakersPerTeam);
+          // si cambió el nº, no forzamos setTeams aquí para evitar loops, solo calculamos
+          return recomputeTeamStats(normalized, rounds);
+        }, [teams, rounds, config.speakersPerTeam, config.tiebreak]);
+
         function getStandings() {
-          return [...teams].sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            if (b.itemsWon !== a.itemsWon) return b.itemsWon - a.itemsWon;
-            return (b.speakerPoints || 0) - (a.speakerPoints || 0);
+          return [...computedTeams].sort(compareTeams);
+        }
+
+        // ===== Actualizar un match (items/votos) y marcar completado =====
+        function updateMatch(roundIdx, matchIdx, patch) {
+          const newRounds = rounds.map((r, ri) => {
+            if (ri !== roundIdx) return r;
+            const matches = (r.matches || []).map((m, mi) => {
+              if (mi !== matchIdx) return m;
+              const next = { ...m, ...patch };
+              // completado si tiene items numéricos
+              const aOk = next.favorItems !== null && next.favorItems !== "" && Number.isFinite(Number(next.favorItems));
+              const bOk = next.contraItems !== null && next.contraItems !== "" && Number.isFinite(Number(next.contraItems));
+              next.completed = aOk && bOk;
+              return next;
+            });
+            return { ...r, matches };
           });
+          setRounds(newRounds);
         }
 
         // ===== Export Excel =====
@@ -968,15 +1144,45 @@
             "Institución": team.school,
             "Puntos": team.points,
             "Ítems Ganados": team.itemsWon,
+            "Votos Ganados": team.votesWon,
             "A favor": team.positions?.afavor || 0,
             "En contra": team.positions?.enContra || 0,
-            "Oradores": (team.speakers || []).filter(Boolean).join(", ")
+            "Oradores": (team.speakers || []).map((s) => `${s.name || "-"} (${s.role || "-"})`).join(", ")
           }));
 
           const ws = XLSX.utils.json_to_sheet(data);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Clasificación General");
           XLSX.writeFile(wb, "clasificacion_general.xlsx");
+        }
+
+        // ===== Ranking de oradores (general y por rol) =====
+        const speakerList = useMemo(() => {
+          const list = [];
+          for (const t of computedTeams) {
+            for (const s of (t.speakers || [])) {
+              list.push({
+                speakerId: s.id,
+                name: s.name || "",
+                role: s.role || "",
+                points: Number(s.points || 0),
+                teamId: t.id,
+                teamName: t.name,
+                school: t.school
+              });
+            }
+          }
+          return list;
+        }, [computedTeams]);
+
+        function getSpeakerRanking(roleFilter = "TODOS") {
+          const filtered = roleFilter === "TODOS" ? speakerList : speakerList.filter((s) => s.role === roleFilter);
+          return filtered
+            .filter((s) => (s.name || "").trim().length > 0)
+            .sort((a, b) => {
+              if (b.points !== a.points) return b.points - a.points;
+              return a.name.localeCompare(b.name);
+            });
         }
 
         // ===== UI helpers =====
@@ -1190,6 +1396,35 @@
                     </select>
                   </div>
 
+                  <div>
+                    <label>Nº oradores por equipo (2 a 5)</label>
+                    <select
+                      value={String(config.speakersPerTeam)}
+                      onChange={(e) => {
+                        const v = Math.max(2, Math.min(5, Number(e.target.value)));
+                        setConfig({ ...config, speakersPerTeam: v });
+                        setTeams((prev) => normalizeTeamsToSpeakersPerTeam(prev, v));
+                      }}
+                    >
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">4</option>
+                      <option value="5">5</option>
+                    </select>
+                  </div>
+
+                  <div style={{ gridColumn: "span 2" }}>
+                    <label>Criterio de desempate</label>
+                    <select value={config.tiebreak} onChange={(e) => setConfig({ ...config, tiebreak: e.target.value })}>
+                      {TIEBREAK_OPTIONS.map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
+                    <div className="muted small" style={{ marginTop: 6 }}>
+                      * “Enfrentamiento directo” se aplica cuando hay debate previo entre los equipos empatados. “Votos” se toma de los votos registrados en la ronda.
+                    </div>
+                  </div>
+
                   {config.tournamentSystem === "grupos" && (
                     <>
                       <div>
@@ -1210,7 +1445,7 @@
                   <div className="muted small">
                     Logo fijo de la empresa (se muestra arriba). Lados del debate: <b>A favor</b> / <b>En contra</b>.
                   </div>
-                  <button className="primary" onClick={generatePairings} disabled={teams.length < 2}>
+                  <button className="primary" onClick={generatePairings} disabled={computedTeams.length < 2}>
                     🧩 Generar emparejamientos (nueva ronda)
                   </button>
                 </div>
@@ -1234,18 +1469,46 @@
                       <tr>
                         <th>Equipo</th>
                         <th>Institución</th>
-                        <th>Orador 1</th>
-                        <th>Orador 2</th>
+                        <th>Oradores (nombre · rol · puntos)</th>
                         <th className="right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {teams.map((t) => (
+                      {normalizeTeamsToSpeakersPerTeam(teams, config.speakersPerTeam).map((t) => (
                         <tr key={t.id}>
-                          <td><input value={t.name} onChange={(e) => updateTeam(t.id, "name", e.target.value)} /></td>
-                          <td><input value={t.school} onChange={(e) => updateTeam(t.id, "school", e.target.value)} /></td>
-                          <td><input value={t.speakers?.[0] || ""} onChange={(e) => updateTeamSpeaker(t.id, 0, e.target.value)} /></td>
-                          <td><input value={t.speakers?.[1] || ""} onChange={(e) => updateTeamSpeaker(t.id, 1, e.target.value)} /></td>
+                          <td>
+                            <input value={t.name} onChange={(e) => updateTeam(t.id, "name", e.target.value)} />
+                          </td>
+                          <td>
+                            <input value={t.school} onChange={(e) => updateTeam(t.id, "school", e.target.value)} />
+                          </td>
+                          <td>
+                            <div className="stack">
+                              {(t.speakers || []).map((s, idx) => (
+                                <div className="speakerRow" key={s.id}>
+                                  <input
+                                    placeholder={`Orador ${idx + 1}`}
+                                    value={s.name || ""}
+                                    onChange={(e) => updateSpeaker(t.id, s.id, "name", e.target.value)}
+                                  />
+                                  <select value={s.role || "Libre"} onChange={(e) => updateSpeaker(t.id, s.id, "role", e.target.value)}>
+                                    {ROLE_OPTIONS.map((r) => (
+                                      <option key={r.value} value={r.value}>{r.label}</option>
+                                    ))}
+                                  </select>
+                                  <input
+                                    type="number"
+                                    placeholder="Puntos"
+                                    value={String(s.points ?? 0)}
+                                    onChange={(e) => updateSpeaker(t.id, s.id, "points", Number(e.target.value))}
+                                  />
+                                </div>
+                              ))}
+                              <div className="muted small">
+                                Estos puntos alimentan el ranking de oradores (general y por rol).
+                              </div>
+                            </div>
+                          </td>
                           <td className="right">
                             <button className="danger" onClick={() => deleteTeam(t.id)}>🗑️</button>
                           </td>
@@ -1369,7 +1632,7 @@
                 <div className="toolbar" style={{ justifyContent: "space-between" }}>
                   <h2 style={{ margin: 0 }}>Rondas</h2>
                   <div className="toolbar">
-                    <button className="primary" onClick={generatePairings} disabled={teams.length < 2}>➕ Nueva ronda</button>
+                    <button className="primary" onClick={generatePairings} disabled={computedTeams.length < 2}>➕ Nueva ronda</button>
                     <span className="muted small">Total: {rounds.length}</span>
                   </div>
                 </div>
@@ -1387,6 +1650,7 @@
                           <option key={r.number} value={idx}>Ronda {r.number}</option>
                         ))}
                       </select>
+                      <span className="muted small">Desempate: <b>{config.tiebreak}</b></span>
                     </div>
 
                     <div className="hr"></div>
@@ -1401,13 +1665,14 @@
                           <th>A favor</th>
                           <th>En contra</th>
                           <th className="nowrap">Ítems (A / E)</th>
+                          <th className="nowrap">Votos (A / E)</th>
                           <th>Estado</th>
                         </tr>
                       </thead>
                       <tbody>
                         {(rounds[currentRound]?.matches || []).map((m, idx) => {
-                          const favor = teams.find((t) => t.id === m.aFavor);
-                          const contra = teams.find((t) => t.id === m.enContra);
+                          const favor = computedTeams.find((t) => t.id === m.aFavor);
+                          const contra = computedTeams.find((t) => t.id === m.enContra);
 
                           return (
                             <tr key={m.id}>
@@ -1428,16 +1693,31 @@
                               <td className="nowrap">
                                 <input
                                   type="number"
-                                  style={{ width: 80, display: "inline-block", marginRight: 8 }}
-                                  defaultValue={m.favorItems ?? ""}
-                                  onBlur={(e) => recordResult(currentRound, idx, e.target.value, m.contraItems ?? 0)}
+                                  style={{ width: 90, display: "inline-block", marginRight: 8 }}
+                                  value={m.favorItems ?? ""}
+                                  onChange={(e) => updateMatch(currentRound, idx, { favorItems: e.target.value })}
                                 />
                                 /
                                 <input
                                   type="number"
-                                  style={{ width: 80, display: "inline-block", marginLeft: 8 }}
-                                  defaultValue={m.contraItems ?? ""}
-                                  onBlur={(e) => recordResult(currentRound, idx, m.favorItems ?? 0, e.target.value)}
+                                  style={{ width: 90, display: "inline-block", marginLeft: 8 }}
+                                  value={m.contraItems ?? ""}
+                                  onChange={(e) => updateMatch(currentRound, idx, { contraItems: e.target.value })}
+                                />
+                              </td>
+                              <td className="nowrap">
+                                <input
+                                  type="number"
+                                  style={{ width: 90, display: "inline-block", marginRight: 8 }}
+                                  value={m.favorVotes ?? ""}
+                                  onChange={(e) => updateMatch(currentRound, idx, { favorVotes: e.target.value })}
+                                />
+                                /
+                                <input
+                                  type="number"
+                                  style={{ width: 90, display: "inline-block", marginLeft: 8 }}
+                                  value={m.contraVotes ?? ""}
+                                  onChange={(e) => updateMatch(currentRound, idx, { contraVotes: e.target.value })}
                                 />
                               </td>
                               <td>{m.completed ? <span className="pill">Completado</span> : <span className="pill">Pendiente</span>}</td>
@@ -1446,6 +1726,9 @@
                         })}
                       </tbody>
                     </table>
+                    <div className="muted small" style={{ marginTop: 10 }}>
+                      * El debate se marca “Completado” cuando hay ítems en ambos lados. Los votos son opcionales pero se usan si eliges desempates con “Votos”.
+                    </div>
                   </>
                 )}
               </div>
@@ -1460,33 +1743,53 @@
 
                 <div className="spacer"></div>
 
-                {teams.length === 0 ? (
+                {computedTeams.length === 0 ? (
                   <div className="muted">Añade equipos primero.</div>
                 ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Pos</th>
-                        <th>Equipo</th>
-                        <th>Institución</th>
-                        <th>Puntos</th>
-                        <th>Ítems</th>
-                        <th className="nowrap">A / E</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {getStandings().map((t, idx) => (
-                        <tr key={t.id}>
-                          <td className="nowrap"><b>{idx + 1}</b></td>
-                          <td className="wrap">{t.name}</td>
-                          <td className="wrap muted">{t.school}</td>
-                          <td className="nowrap">{t.points}</td>
-                          <td className="nowrap">{t.itemsWon}</td>
-                          <td className="nowrap">{t.positions?.afavor || 0} / {t.positions?.enContra || 0}</td>
+                  <>
+                    <h3 style={{ marginTop: 0 }}>Ranking de equipos</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Pos</th>
+                          <th>Equipo</th>
+                          <th>Institución</th>
+                          <th>Puntos</th>
+                          <th>Ítems</th>
+                          <th>Votos</th>
+                          <th className="nowrap">A / E</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {getStandings().map((t, idx) => (
+                          <tr key={t.id}>
+                            <td className="nowrap"><b>{idx + 1}</b></td>
+                            <td className="wrap">{t.name}</td>
+                            <td className="wrap muted">{t.school}</td>
+                            <td className="nowrap">{t.points}</td>
+                            <td className="nowrap">{t.itemsWon}</td>
+                            <td className="nowrap">{t.votesWon}</td>
+                            <td className="nowrap">{t.positions?.afavor || 0} / {t.positions?.enContra || 0}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <div className="hr"></div>
+
+                    <h3 style={{ marginTop: 0 }}>Ranking de oradores (general y por rol)</h3>
+
+                    <div className="row cols2">
+                      <div>
+                        <label>Ver ranking por rol</label>
+                        <SpeakerRanking />
+                      </div>
+                      <div className="muted small">
+                        Los puntos de orador se editan en <b>👥 Equipos</b>.  
+                        Si quieres, en el siguiente paso podemos añadir “puntos por orador por ronda” (más automático).
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -1494,11 +1797,59 @@
             <div className="card">
               <div className="muted small">
                 ✅ Usuarios + torneos se guardan en <code>localStorage</code> (persisten de un día para otro).<br/>
-                📌 Lados del debate: <b>A favor</b> / <b>En contra</b>.
+                📌 Lados del debate: <b>A favor</b> / <b>En contra</b>. · Oradores: <b>{config.speakersPerTeam}</b> por equipo.
               </div>
             </div>
           </div>
         );
+
+        // --- componente ranking oradores
+        function SpeakerRanking() {
+          const [role, setRole] = useState("TODOS");
+          const ranking = getSpeakerRanking(role);
+
+          return (
+            <div>
+              <select value={role} onChange={(e) => setRole(e.target.value)}>
+                <option value="TODOS">Todos (general)</option>
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+
+              <div className="spacer"></div>
+
+              {ranking.length === 0 ? (
+                <div className="muted">No hay oradores con nombre todavía.</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Pos</th>
+                      <th>Orador</th>
+                      <th>Rol</th>
+                      <th>Equipo</th>
+                      <th>Institución</th>
+                      <th className="right">Puntos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ranking.map((s, idx) => (
+                      <tr key={s.speakerId}>
+                        <td><b>{idx + 1}</b></td>
+                        <td className="wrap">{s.name}</td>
+                        <td className="nowrap">{s.role}</td>
+                        <td className="wrap">{s.teamName}</td>
+                        <td className="wrap muted">{s.school}</td>
+                        <td className="right nowrap"><b>{s.points}</b></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          );
+        }
       }
 
       ReactDOM.createRoot(document.getElementById("root")).render(<DebateTabulator />);
