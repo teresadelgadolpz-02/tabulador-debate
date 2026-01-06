@@ -1,0 +1,1507 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tabulador de Debate Académico</title>
+
+    <!-- =========================
+         CONFIG EMPRESA (EDITA AQUÍ)
+         ========================= -->
+    <script>
+      // ✅ Pon aquí la ruta REAL de tu logo en tu hosting (FTP).
+      // Ejemplos:
+      //   "/tabulador-app/logo.png"
+      //   "/logo.png"
+      //   "https://tudominio.com/logo.png"
+      window.COMPANY_LOGO_URL = "/tabulador-app/logo.png";
+      window.COMPANY_NAME = "Learn By Talking Formación";
+    </script>
+
+    <!-- React 18 UMD -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+    <!-- Babel (JSX en el navegador) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- XLSX -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+      :root {
+        color-scheme: light;
+        --brand: #930203;
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --border: #e8e8ee;
+        --muted: #666;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        margin: 0;
+        background: var(--bg);
+        color: var(--brand);
+      }
+
+      header {
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 16px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 200px;
+      }
+
+      .brand-logo {
+        width: 46px;
+        height: 46px;
+        object-fit: contain;
+        border-radius: 10px;
+        border: 1px solid #eee;
+        background: #fff;
+      }
+
+      h1 {
+        font-size: 16px;
+        margin: 0;
+        color: var(--brand);
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 16px auto;
+        padding: 0 16px 40px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+      }
+
+      /* ESPACIADO MEJORADO */
+      .toolbar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .tabs {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .row {
+        display: grid;
+        gap: 16px;
+      }
+      .row.cols2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .row.cols3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .row.cols4 {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+      }
+
+      @media (max-width: 900px) {
+        .row.cols2,
+        .row.cols3,
+        .row.cols4 {
+          grid-template-columns: 1fr;
+        }
+        header {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        table {
+          display: block;
+          overflow-x: auto;
+        }
+      }
+
+      label {
+        font-size: 12px;
+        display: block;
+        margin-bottom: 6px;
+        color: var(--brand);
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #d9d9e3;
+        border-radius: 12px;
+        background: #fff;
+        color: #111;
+        box-sizing: border-box;
+      }
+
+      button {
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #d9d9e3;
+        background: white;
+        cursor: pointer;
+        color: var(--brand);
+      }
+
+      button.primary {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: #fff;
+      }
+
+      button.danger {
+        background: #ff3b30;
+        border-color: #ff3b30;
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .tab {
+        padding: 10px 12px;
+        border-radius: 999px;
+        border: 1px solid #d9d9e3;
+        background: white;
+        font-size: 13px;
+        color: var(--brand);
+      }
+
+      .tab.active {
+        background: rgba(147, 2, 3, 0.08);
+        border-color: rgba(147, 2, 3, 0.35);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #eee;
+        padding: 12px;
+        text-align: left;
+        font-size: 13px;
+        vertical-align: top;
+      }
+      th {
+        font-size: 12px;
+        color: var(--brand);
+        opacity: 0.85;
+      }
+
+      table input,
+      table select {
+        min-width: 140px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .pill {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #f0f1f5;
+        font-size: 12px;
+        color: #111;
+      }
+
+      .spacer {
+        height: 12px;
+      }
+      .hr {
+        height: 1px;
+        background: #eee;
+        margin: 14px 0;
+      }
+      .right {
+        text-align: right;
+      }
+      .small {
+        font-size: 12px;
+      }
+      .nowrap {
+        white-space: nowrap;
+      }
+      .wrap {
+        word-break: break-word;
+      }
+
+      code {
+        background: #f0f1f5;
+        padding: 2px 6px;
+        border-radius: 6px;
+        color: #111;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="header-left">
+        <img id="companyLogo" class="brand-logo" alt="Logo" />
+        <div>
+          <h1>Tabulador de Debate Académico</h1>
+          <div id="companyName" class="muted"></div>
+        </div>
+      </div>
+      <div id="header-actions" class="toolbar"></div>
+    </header>
+
+    <div class="container">
+      <div id="root"></div>
+    </div>
+
+    <script type="text/babel">
+      const { useEffect, useState } = React;
+
+      // Pintar marca fija
+      document.getElementById("companyLogo").src = window.COMPANY_LOGO_URL || "";
+      document.getElementById("companyName").textContent =
+        "Un proyecto de " + (window.COMPANY_NAME || "Learn By Talking Formación");
+
+      // ===== Storage (localStorage) =====
+      const storage = {
+        async get(key) {
+          const value = localStorage.getItem(key);
+          return value ? { value } : null;
+        },
+        async set(key, value) {
+          localStorage.setItem(key, value);
+        },
+        async remove(key) {
+          localStorage.removeItem(key);
+        }
+      };
+
+      function uid() {
+        return Date.now() + Math.floor(Math.random() * 1e6);
+      }
+
+      async function sha256(text) {
+        const enc = new TextEncoder().encode(text);
+        const buf = await crypto.subtle.digest("SHA-256", enc);
+        return Array.from(new Uint8Array(buf))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+      }
+
+      async function loadUsers() {
+        const stored = await storage.get("users");
+        return stored ? JSON.parse(stored.value) : [];
+      }
+
+      function DebateTabulator() {
+        // ===== Auth =====
+        const [isAuthenticated, setIsAuthenticated] = useState(false);
+        const [currentUser, setCurrentUser] = useState(null);
+        const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+        const [registerForm, setRegisterForm] = useState({
+          name: "",
+          email: "",
+          password: "",
+          confirmPassword: ""
+        });
+        const [hasAnyUser, setHasAnyUser] = useState(null);
+        const [isRegistering, setIsRegistering] = useState(false);
+
+        // ===== Toast =====
+        const [toast, setToast] = useState(null); // {title, message}
+        function showToast(title, message, ms = 6000) {
+          setToast({ title, message });
+          window.clearTimeout(window.__toastTimer);
+          window.__toastTimer = window.setTimeout(() => setToast(null), ms);
+        }
+
+        // ===== App state =====
+        const [config, setConfig] = useState({
+          tournamentName: "",
+          roundsClasif: 6,
+          roundsFinales: 4,
+          tournamentSystem: "suizo",
+          allowRepeatMatchups: false,
+          numGroups: 4,
+          groupSize: 4
+        });
+
+        const [teams, setTeams] = useState([]);
+        const [rounds, setRounds] = useState([]);
+        const [currentRound, setCurrentRound] = useState(0);
+
+        const [groups, setGroups] = useState([]);
+        const [rooms, setRooms] = useState([]);
+        const [judges, setJudges] = useState([]);
+
+        const [tournaments, setTournaments] = useState([]);
+        const [currentTournamentId, setCurrentTournamentId] = useState(null);
+
+        const [activeTab, setActiveTab] = useState("torneos");
+        const hasTournament = !!currentTournamentId;
+
+        // ===== First load: check if users exist =====
+        useEffect(() => {
+          (async () => {
+            try {
+              const users = await loadUsers();
+              const any = users.length > 0;
+              setHasAnyUser(any);
+              setIsRegistering(!any); // si no hay usuarios, forzar registro
+            } catch (e) {
+              setHasAnyUser(false);
+              setIsRegistering(true);
+            }
+          })();
+        }, []);
+
+        // ===== Load user tournaments after auth =====
+        useEffect(() => {
+          if (isAuthenticated && currentUser) loadUserData();
+        }, [isAuthenticated, currentUser]);
+
+        // ===== Autosave =====
+        useEffect(() => {
+          if (isAuthenticated && currentUser && currentTournamentId) saveCurrentTournament();
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [teams, rounds, rooms, judges, config, groups, currentRound]);
+
+        // ===== Header actions =====
+        useEffect(() => {
+          const node = document.getElementById("header-actions");
+          if (!node) return;
+
+          const HeaderButtons = () => (
+            <div className="toolbar">
+              {isAuthenticated ? (
+                <>
+                  <span className="small muted">👤 {currentUser?.name}</span>
+                  <button className="primary" onClick={handleLogout}>🚪 Salir</button>
+                </>
+              ) : (
+                <span className="small muted">No autenticado</span>
+              )}
+            </div>
+          );
+
+          ReactDOM.createRoot(node).render(<HeaderButtons />);
+        }, [isAuthenticated, currentUser]);
+
+        // ===== Auth functions =====
+        async function handleLogin() {
+          try {
+            const users = await loadUsers();
+            const passwordHash = await sha256(loginForm.password);
+            const email = loginForm.email.trim().toLowerCase();
+            const user = users.find((u) => u.email === email && u.passwordHash === passwordHash);
+            if (!user) return alert("Email o contraseña incorrectos");
+            setCurrentUser(user);
+            setIsAuthenticated(true);
+            setLoginForm({ email: "", password: "" });
+          } catch (e) {
+            alert("Email o contraseña incorrectos");
+          }
+        }
+
+        async function handleRegister() {
+          const name = registerForm.name.trim();
+          const email = registerForm.email.trim().toLowerCase();
+
+          if (!name) return alert("Pon un nombre de usuario");
+          if (!email) return alert("Pon un email");
+          if (registerForm.password !== registerForm.confirmPassword)
+            return alert("Las contraseñas no coinciden");
+          if (registerForm.password.length < 6)
+            return alert("La contraseña debe tener al menos 6 caracteres");
+
+          try {
+            const users = await loadUsers();
+            if (users.find((u) => u.email === email)) return alert("Este email ya está registrado");
+
+            const newUser = {
+              id: uid(),
+              name,
+              email,
+              passwordHash: await sha256(registerForm.password),
+              createdAt: new Date().toISOString()
+            };
+
+            users.push(newUser);
+            await storage.set("users", JSON.stringify(users));
+
+            setHasAnyUser(true);
+            setCurrentUser(newUser);
+            setIsAuthenticated(true);
+            setRegisterForm({ name: "", email: "", password: "", confirmPassword: "" });
+            setIsRegistering(false);
+          } catch (e) {
+            console.error(e);
+            alert("Error al crear la cuenta");
+          }
+        }
+
+        function handleLogout() {
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          setTournaments([]);
+          setCurrentTournamentId(null);
+          resetTournamentData();
+          setActiveTab("torneos");
+          setIsRegistering(false);
+          setToast(null);
+        }
+
+        // ===== Persistence =====
+        async function loadUserData() {
+          try {
+            const key = `tournaments_${currentUser.id}`;
+            const stored = await storage.get(key);
+            if (stored) {
+              const data = JSON.parse(stored.value);
+              setTournaments(data.tournaments || []);
+            } else {
+              setTournaments([]);
+            }
+          } catch (e) {
+            setTournaments([]);
+          }
+        }
+
+        async function saveCurrentTournament() {
+          if (!currentTournamentId) return;
+          try {
+            const tournamentData = {
+              id: currentTournamentId,
+              name: config.tournamentName || "Torneo sin nombre",
+              config,
+              teams,
+              rounds,
+              rooms,
+              judges,
+              groups,
+              currentRound,
+              lastModified: new Date().toISOString()
+            };
+
+            const updated = tournaments.filter((t) => t.id !== currentTournamentId);
+            updated.push(tournamentData);
+
+            const key = `tournaments_${currentUser.id}`;
+            await storage.set(key, JSON.stringify({ tournaments: updated }));
+            setTournaments(updated);
+          } catch (e) {
+            console.error("Error al guardar:", e);
+          }
+        }
+
+        function loadTournament(t) {
+          setCurrentTournamentId(t.id);
+          setConfig(t.config || config);
+          setTeams(t.teams || []);
+          setRounds(t.rounds || []);
+          setRooms(t.rooms || []);
+          setJudges(t.judges || []);
+          setGroups(t.groups || []);
+          setCurrentRound(t.currentRound || 0);
+          setActiveTab("config");
+
+          showToast(
+            "✅ Torneo cargado",
+            "Puedes continuar en ⚙️ Config, luego 👥 Equipos. También puedes añadir 🏫 Salas y 🧑‍⚖️ Jueces antes de generar 🧾 Rondas.",
+            5500
+          );
+        }
+
+        function createNewTournament() {
+          const newId = uid();
+          setCurrentTournamentId(newId);
+          resetTournamentData();
+          setActiveTab("config");
+
+          showToast(
+            "✅ Torneo creado correctamente",
+            "Siguiente paso: ve a ⚙️ Config para poner el nombre y ajustes, y después a 👥 Equipos para añadir participantes.",
+            6500
+          );
+        }
+
+        function resetTournamentData() {
+          setConfig({
+            tournamentName: "",
+            roundsClasif: 6,
+            roundsFinales: 4,
+            tournamentSystem: "suizo",
+            allowRepeatMatchups: false,
+            numGroups: 4,
+            groupSize: 4
+          });
+          setTeams([]);
+          setRounds([]);
+          setRooms([]);
+          setJudges([]);
+          setGroups([]);
+          setCurrentRound(0);
+        }
+
+        async function deleteTournament(tournamentId) {
+          if (!confirm("¿Estás seguro de eliminar este torneo?")) return;
+          try {
+            const updated = tournaments.filter((t) => t.id !== tournamentId);
+            const key = `tournaments_${currentUser.id}`;
+            await storage.set(key, JSON.stringify({ tournaments: updated }));
+            setTournaments(updated);
+
+            if (currentTournamentId === tournamentId) {
+              setCurrentTournamentId(null);
+              resetTournamentData();
+              setActiveTab("torneos");
+            }
+          } catch (e) {
+            alert("Error al eliminar el torneo");
+          }
+        }
+
+        // ===== CRUD Teams =====
+        function addTeam() {
+          const newTeam = {
+            id: uid(),
+            name: `Equipo ${teams.length + 1}`,
+            school: "",
+            speakers: ["", ""],
+            points: 0,
+            itemsWon: 0,
+            speakerPoints: 0,
+            opponents: [],
+            positions: { afavor: 0, enContra: 0 } // ✅ ya no gov/opp
+          };
+          setTeams([...teams, newTeam]);
+        }
+
+        function deleteTeam(id) {
+          setTeams(teams.filter((t) => t.id !== id));
+        }
+
+        function updateTeam(id, field, value) {
+          setTeams(teams.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
+        }
+
+        function updateTeamSpeaker(id, idx, value) {
+          setTeams(
+            teams.map((t) => {
+              if (t.id !== id) return t;
+              const speakers = [...(t.speakers || ["", ""])];
+              speakers[idx] = value;
+              return { ...t, speakers };
+            })
+          );
+        }
+
+        // ===== CRUD Rooms =====
+        function addRoom() {
+          const newRoom = { id: uid(), name: `Sala ${rooms.length + 1}`, location: "", capacity: 50, available: true };
+          setRooms([...rooms, newRoom]);
+        }
+        function deleteRoom(id) {
+          setRooms(rooms.filter((r) => r.id !== id));
+        }
+        function updateRoom(id, field, value) {
+          setRooms(rooms.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+        }
+
+        // ===== CRUD Judges =====
+        function addJudge() {
+          const newJudge = {
+            id: uid(),
+            name: `Juez ${judges.length + 1}`,
+            email: "",
+            type: "principal",
+            institution: "",
+            experience: 0,
+            available: true,
+            assignedMatches: [],
+            conflictInstitutions: []
+          };
+          setJudges([...judges, newJudge]);
+        }
+        function deleteJudge(id) {
+          setJudges(judges.filter((j) => j.id !== id));
+        }
+        function updateJudge(id, field, value) {
+          setJudges(judges.map((j) => (j.id === id ? { ...j, [field]: value } : j)));
+        }
+
+        // ===== Excel templates =====
+        function exportRoomsTemplate() {
+          const template = [
+            { Nombre: "Sala 1", Ubicación: "Edificio A - Piso 1", Capacidad: 50 },
+            { Nombre: "Sala 2", Ubicación: "Edificio A - Piso 2", Capacidad: 40 },
+            { Nombre: "Sala 3", Ubicación: "Edificio B - Piso 1", Capacidad: 60 }
+          ];
+          const ws = XLSX.utils.json_to_sheet(template);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Salas");
+          XLSX.writeFile(wb, "plantilla_salas.xlsx");
+        }
+
+        function exportJudgesTemplate() {
+          const template = [
+            { Nombre: "Juan Pérez", Email: "juan@email.com", Tipo: "principal", Institución: "Universidad A", Experiencia: 5 },
+            { Nombre: "María García", Email: "maria@email.com", Tipo: "panelista", Institución: "Universidad B", Experiencia: 3 },
+            { Nombre: "Carlos López", Email: "carlos@email.com", Tipo: "principal", Institución: "Universidad C", Experiencia: 7 }
+          ];
+          const ws = XLSX.utils.json_to_sheet(template);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Jueces");
+          XLSX.writeFile(wb, "plantilla_jueces.xlsx");
+        }
+
+        function importRoomsFromExcel(e) {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            const wb = XLSX.read(data, { type: "array" });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+
+            const newRooms = json.map((row, idx) => ({
+              id: uid() + idx,
+              name: row["Nombre"] || row["Name"] || `Sala ${idx + 1}`,
+              location: row["Ubicación"] || row["Location"] || "",
+              capacity: Number(row["Capacidad"] || row["Capacity"] || 50),
+              available: true
+            }));
+
+            setRooms((prev) => [...prev, ...newRooms]);
+            alert(`${newRooms.length} salas importadas correctamente`);
+            e.target.value = "";
+          };
+          reader.readAsArrayBuffer(file);
+        }
+
+        function importJudgesFromExcel(e) {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            const wb = XLSX.read(data, { type: "array" });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+
+            const newJudges = json.map((row, idx) => ({
+              id: uid() + idx,
+              name: row["Nombre"] || row["Name"] || `Juez ${idx + 1}`,
+              email: row["Email"] || row["Correo"] || "",
+              type: String(row["Tipo"] || row["Type"] || "principal").toLowerCase(),
+              institution: row["Institución"] || row["Institution"] || "",
+              experience: Number(row["Experiencia"] || row["Experience"] || 0),
+              available: true,
+              assignedMatches: [],
+              conflictInstitutions: []
+            }));
+
+            setJudges((prev) => [...prev, ...newJudges]);
+            alert(`${newJudges.length} jueces importados correctamente`);
+            e.target.value = "";
+          };
+          reader.readAsArrayBuffer(file);
+        }
+
+        // ===== Pairings =====
+        function generatePairings() {
+          if (teams.length < 2) {
+            alert("Necesitas al menos 2 equipos");
+            return;
+          }
+          let newMatches = [];
+          if (config.tournamentSystem === "suizo") newMatches = generateSwissPairings();
+          else if (config.tournamentSystem === "aleatorio") newMatches = generateRandomPairings();
+          else if (config.tournamentSystem === "grupos") newMatches = generateGroupPairings();
+
+          newMatches = assignRoomsAndJudges(newMatches);
+
+          const newRound = {
+            number: rounds.length + 1,
+            matches: newMatches,
+            isClassificatory: rounds.length < Number(config.roundsClasif || 0)
+          };
+
+          setRounds([...rounds, newRound]);
+          setCurrentRound(rounds.length);
+          setActiveTab("rondas");
+        }
+
+        function generateSwissPairings() {
+          const sorted = [...teams].sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.itemsWon !== a.itemsWon) return b.itemsWon - a.itemsWon;
+            return (b.speakerPoints || 0) - (a.speakerPoints || 0);
+          });
+
+          const matches = [];
+          const paired = new Set();
+
+          for (let i = 0; i < sorted.length; i++) {
+            if (paired.has(sorted[i].id)) continue;
+
+            for (let j = i + 1; j < sorted.length; j++) {
+              if (paired.has(sorted[j].id)) continue;
+
+              const t1 = sorted[i];
+              const t2 = sorted[j];
+
+              const canMatch = config.allowRepeatMatchups || !t1.opponents.includes(t2.id);
+              if (!canMatch) continue;
+
+              const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
+
+              matches.push({
+                id: uid(),
+                aFavor: t1IsFavor ? t1.id : t2.id,
+                enContra: t1IsFavor ? t2.id : t1.id,
+                favorItems: null,
+                contraItems: null,
+                completed: false
+              });
+
+              paired.add(t1.id);
+              paired.add(t2.id);
+              break;
+            }
+          }
+
+          return matches;
+        }
+
+        function generateRandomPairings() {
+          const shuffled = [...teams].sort(() => Math.random() - 0.5);
+          const matches = [];
+          for (let i = 0; i < shuffled.length - 1; i += 2) {
+            const t1 = shuffled[i];
+            const t2 = shuffled[i + 1];
+            if (!t1 || !t2) continue;
+
+            const t1IsFavor = Math.random() > 0.5;
+
+            matches.push({
+              id: uid(),
+              aFavor: t1IsFavor ? t1.id : t2.id,
+              enContra: t1IsFavor ? t2.id : t1.id,
+              favorItems: null,
+              contraItems: null,
+              completed: false
+            });
+          }
+          return matches;
+        }
+
+        function createGroups() {
+          const shuffled = [...teams].sort(() => Math.random() - 0.5);
+          const newGroups = [];
+          const numGroups = Math.max(1, Number(config.numGroups || 1));
+
+          for (let i = 0; i < numGroups; i++) {
+            newGroups.push({ id: i + 1, name: `Grupo ${String.fromCharCode(65 + i)}`, teams: [] });
+          }
+
+          shuffled.forEach((team, idx) => {
+            const gIdx = idx % numGroups;
+            team.groupId = newGroups[gIdx].id;
+            newGroups[gIdx].teams.push(team.id);
+          });
+
+          setGroups(newGroups);
+          setTeams([...shuffled]);
+        }
+
+        function generateGroupPairings() {
+          if (rounds.length === 0 && groups.length === 0) createGroups();
+
+          const matches = [];
+          groups.forEach((group) => {
+            const groupTeams = teams.filter((t) => t.groupId === group.id);
+            for (let i = 0; i < groupTeams.length - 1; i++) {
+              for (let j = i + 1; j < groupTeams.length; j++) {
+                const t1 = groupTeams[i];
+                const t2 = groupTeams[j];
+                if (t1.opponents.includes(t2.id)) continue;
+
+                const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
+
+                matches.push({
+                  id: uid(),
+                  aFavor: t1IsFavor ? t1.id : t2.id,
+                  enContra: t1IsFavor ? t2.id : t1.id,
+                  favorItems: null,
+                  contraItems: null,
+                  completed: false,
+                  groupId: group.id
+                });
+              }
+            }
+          });
+
+          return matches.slice(0, Math.floor(teams.length / 2));
+        }
+
+        function assignRoomsAndJudges(matches) {
+          const availableRooms = rooms.filter((r) => r.available);
+          const availableJudges = judges.filter((j) => j.available);
+          const principalJudges = availableJudges.filter((j) => j.type === "principal");
+          const panelistJudges = availableJudges.filter((j) => j.type === "panelista");
+
+          return matches.map((match, idx) => {
+            const favorTeam = teams.find((t) => t.id === match.aFavor);
+            const contraTeam = teams.find((t) => t.id === match.enContra);
+
+            const room = availableRooms.length ? availableRooms[idx % availableRooms.length] : null;
+
+            const institutionsInMatch = [favorTeam?.school, contraTeam?.school].filter(Boolean);
+            const hasConflict = (judge) => {
+              if (institutionsInMatch.includes(judge.institution)) return true;
+              return (judge.conflictInstitutions || []).some((inst) => institutionsInMatch.includes(inst));
+            };
+
+            const assigned = [];
+
+            const availablePrincipals = principalJudges.filter((j) => !hasConflict(j));
+            if (availablePrincipals.length) {
+              const principal = availablePrincipals[idx % availablePrincipals.length];
+              assigned.push({ id: principal.id, name: principal.name, type: "principal", institution: principal.institution });
+            } else if (principalJudges.length) {
+              const principal = principalJudges[idx % principalJudges.length];
+              assigned.push({ id: principal.id, name: principal.name, type: "principal", institution: principal.institution, hasConflict: true });
+            }
+
+            const availablePanelists = panelistJudges.filter((j) => !hasConflict(j) && !assigned.find((a) => a.id === j.id));
+            const numPanelists = Math.min(2, availablePanelists.length);
+            for (let i = 0; i < numPanelists; i++) {
+              const p = availablePanelists[(idx + i) % availablePanelists.length];
+              if (p) assigned.push({ id: p.id, name: p.name, type: "panelista", institution: p.institution });
+            }
+
+            return {
+              ...match,
+              room: room ? { id: room.id, name: room.name, location: room.location } : null,
+              judges: assigned
+            };
+          });
+        }
+
+        // ===== Results =====
+        function recordResult(roundIdx, matchIdx, favorItems, contraItems) {
+          const newRounds = [...rounds];
+          const match = newRounds[roundIdx].matches[matchIdx];
+
+          match.favorItems = Number(favorItems);
+          match.contraItems = Number(contraItems);
+          match.completed = true;
+
+          const favorWins = match.favorItems > match.contraItems;
+          const contraWins = match.contraItems > match.favorItems;
+
+          const updatedTeams = teams.map((team) => {
+            if (team.id === match.aFavor) {
+              return {
+                ...team,
+                points: team.points + (favorWins ? 3 : contraWins ? 0 : 1),
+                itemsWon: team.itemsWon + (match.favorItems || 0),
+                opponents: [...team.opponents, match.enContra],
+                positions: { ...team.positions, afavor: (team.positions?.afavor || 0) + 1 }
+              };
+            }
+            if (team.id === match.enContra) {
+              return {
+                ...team,
+                points: team.points + (contraWins ? 3 : favorWins ? 0 : 1),
+                itemsWon: team.itemsWon + (match.contraItems || 0),
+                opponents: [...team.opponents, match.aFavor],
+                positions: { ...team.positions, enContra: (team.positions?.enContra || 0) + 1 }
+              };
+            }
+            return team;
+          });
+
+          setTeams(updatedTeams);
+          setRounds(newRounds);
+        }
+
+        function getStandings() {
+          return [...teams].sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.itemsWon !== a.itemsWon) return b.itemsWon - a.itemsWon;
+            return (b.speakerPoints || 0) - (a.speakerPoints || 0);
+          });
+        }
+
+        // ===== Export Excel =====
+        function exportStandings() {
+          const standings = getStandings();
+          const data = standings.map((team, idx) => ({
+            "Posición": idx + 1,
+            "Equipo": team.name,
+            "Institución": team.school,
+            "Puntos": team.points,
+            "Ítems Ganados": team.itemsWon,
+            "A favor": team.positions?.afavor || 0,
+            "En contra": team.positions?.enContra || 0,
+            "Oradores": (team.speakers || []).filter(Boolean).join(", ")
+          }));
+
+          const ws = XLSX.utils.json_to_sheet(data);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Clasificación General");
+          XLSX.writeFile(wb, "clasificacion_general.xlsx");
+        }
+
+        // ===== UI helpers =====
+        function TabButton({ id, children }) {
+          return (
+            <button
+              className={"tab " + (activeTab === id ? "active" : "")}
+              onClick={() => setActiveTab(id)}
+              disabled={!isAuthenticated || (!hasTournament && id !== "torneos")}
+              title={!hasTournament && id !== "torneos" ? "Crea o carga un torneo primero" : ""}
+            >
+              {children}
+            </button>
+          );
+        }
+
+        // ===== Auth screen =====
+        if (!isAuthenticated) {
+          if (hasAnyUser === null) {
+            return (
+              <div className="card">
+                <div className="muted">Cargando…</div>
+              </div>
+            );
+          }
+
+          const forceRegister = !hasAnyUser;
+
+          return (
+            <div className="card">
+              <h2 style={{ marginTop: 0 }}>{forceRegister ? "Crear primera cuenta" : "Acceso"}</h2>
+
+              {!forceRegister && (
+                <div className="tabs" style={{ marginBottom: 12 }}>
+                  <button className={"tab " + (!isRegistering ? "active" : "")} onClick={() => setIsRegistering(false)}>
+                    Login
+                  </button>
+                  <button className={"tab " + (isRegistering ? "active" : "")} onClick={() => setIsRegistering(true)}>
+                    Registro
+                  </button>
+                </div>
+              )}
+
+              {(forceRegister || isRegistering) ? (
+                <div className="row cols2">
+                  <div>
+                    <label>Nombre</label>
+                    <input value={registerForm.name} onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })} />
+                  </div>
+                  <div>
+                    <label>Email</label>
+                    <input value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} />
+                  </div>
+                  <div>
+                    <label>Contraseña</label>
+                    <input type="password" value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} />
+                  </div>
+                  <div>
+                    <label>Confirmar contraseña</label>
+                    <input type="password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} />
+                  </div>
+                  <div className="toolbar" style={{ gridColumn: "1 / -1" }}>
+                    <button className="primary" onClick={handleRegister}>
+                      {forceRegister ? "Crear primera cuenta" : "Crear cuenta"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="row cols2">
+                  <div>
+                    <label>Email</label>
+                    <input value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} />
+                  </div>
+                  <div>
+                    <label>Contraseña</label>
+                    <input type="password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} />
+                  </div>
+                  <div className="toolbar" style={{ gridColumn: "1 / -1" }}>
+                    <button className="primary" onClick={handleLogin}>
+                      Entrar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="hr"></div>
+              <p className="muted">
+                Los datos se guardan en <code>localStorage</code>. Si borras datos del navegador, se pierden.
+              </p>
+              <p className="muted" style={{ marginBottom: 0 }}>
+                <b>Un proyecto de {window.COMPANY_NAME || "Learn By Talking Formación"}</b>
+              </p>
+            </div>
+          );
+        }
+
+        // ===== Main app =====
+        return (
+          <div className="row" style={{ gap: 14 }}>
+            <div className="card">
+              <div className="toolbar" style={{ justifyContent: "space-between" }}>
+                <div className="tabs">
+                  <TabButton id="torneos">🏆 Torneos</TabButton>
+                  <TabButton id="config">⚙️ Config</TabButton>
+                  <TabButton id="equipos">👥 Equipos</TabButton>
+                  <TabButton id="salas">🏫 Salas</TabButton>
+                  <TabButton id="jueces">🧑‍⚖️ Jueces</TabButton>
+                  <TabButton id="rondas">🧾 Rondas</TabButton>
+                  <TabButton id="ranking">📊 Ranking</TabButton>
+                </div>
+
+                <div className="toolbar">
+                  <button onClick={createNewTournament} className="primary">
+                    ➕ Nuevo torneo
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* TOAST */}
+            {toast && (
+              <div
+                className="card"
+                style={{
+                  borderColor: "rgba(147,2,3,0.35)",
+                  background: "rgba(147,2,3,0.04)"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ minWidth: 240 }}>
+                    <div style={{ fontWeight: 800, marginBottom: 6 }}>{toast.title}</div>
+                    <div className="muted">{toast.message}</div>
+                  </div>
+                  <button className="primary" onClick={() => setToast(null)}>
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "torneos" && (
+              <div className="card">
+                <h2 style={{ marginTop: 0 }}>Tus torneos</h2>
+                <div className="muted small">Se guardan por usuario en este navegador.</div>
+                <div className="spacer"></div>
+
+                {tournaments.length === 0 ? (
+                  <div className="muted">No hay torneos todavía. Pulsa “Nuevo torneo”.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th className="nowrap">Última edición</th>
+                        <th className="right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tournaments
+                        .slice()
+                        .sort((a, b) => (b.lastModified || "").localeCompare(a.lastModified || ""))
+                        .map((t) => (
+                          <tr key={t.id}>
+                            <td className="wrap">
+                              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                <b>{t.name}</b>
+                                {currentTournamentId === t.id ? <span className="pill">abierto</span> : null}
+                              </div>
+                              <div className="muted small">Equipos: {t.teams?.length || 0} · Rondas: {t.rounds?.length || 0}</div>
+                            </td>
+                            <td className="nowrap muted small">{t.lastModified ? new Date(t.lastModified).toLocaleString() : "-"}</td>
+                            <td className="right nowrap">
+                              <button className="primary" onClick={() => loadTournament(t)}>Abrir</button>{" "}
+                              <button className="danger" onClick={() => deleteTournament(t.id)}>Eliminar</button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {activeTab === "config" && (
+              <div className="card">
+                <h2 style={{ marginTop: 0 }}>Configuración</h2>
+
+                <div className="row cols3">
+                  <div>
+                    <label>Nombre del torneo</label>
+                    <input value={config.tournamentName} onChange={(e) => setConfig({ ...config, tournamentName: e.target.value })} />
+                  </div>
+
+                  <div>
+                    <label>Sistema</label>
+                    <select value={config.tournamentSystem} onChange={(e) => setConfig({ ...config, tournamentSystem: e.target.value })}>
+                      <option value="suizo">Suizo</option>
+                      <option value="aleatorio">Aleatorio</option>
+                      <option value="grupos">Grupos</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label>Permitir repetición</label>
+                    <select
+                      value={String(config.allowRepeatMatchups)}
+                      onChange={(e) => setConfig({ ...config, allowRepeatMatchups: e.target.value === "true" })}
+                    >
+                      <option value="false">No</option>
+                      <option value="true">Sí</option>
+                    </select>
+                  </div>
+
+                  {config.tournamentSystem === "grupos" && (
+                    <>
+                      <div>
+                        <label>Nº de grupos</label>
+                        <input type="number" value={config.numGroups} onChange={(e) => setConfig({ ...config, numGroups: Number(e.target.value) })} />
+                      </div>
+                      <div>
+                        <label>Tamaño grupo (info)</label>
+                        <input type="number" value={config.groupSize} onChange={(e) => setConfig({ ...config, groupSize: Number(e.target.value) })} />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="hr"></div>
+
+                <div className="toolbar" style={{ justifyContent: "space-between" }}>
+                  <div className="muted small">
+                    Logo fijo de la empresa (se muestra arriba). Lados del debate: <b>A favor</b> / <b>En contra</b>.
+                  </div>
+                  <button className="primary" onClick={generatePairings} disabled={teams.length < 2}>
+                    🧩 Generar emparejamientos (nueva ronda)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "equipos" && (
+              <div className="card">
+                <div className="toolbar" style={{ justifyContent: "space-between" }}>
+                  <h2 style={{ margin: 0 }}>Equipos</h2>
+                  <button className="primary" onClick={addTeam}>➕ Añadir</button>
+                </div>
+
+                <div className="spacer"></div>
+
+                {teams.length === 0 ? (
+                  <div className="muted">No hay equipos.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Equipo</th>
+                        <th>Institución</th>
+                        <th>Orador 1</th>
+                        <th>Orador 2</th>
+                        <th className="right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teams.map((t) => (
+                        <tr key={t.id}>
+                          <td><input value={t.name} onChange={(e) => updateTeam(t.id, "name", e.target.value)} /></td>
+                          <td><input value={t.school} onChange={(e) => updateTeam(t.id, "school", e.target.value)} /></td>
+                          <td><input value={t.speakers?.[0] || ""} onChange={(e) => updateTeamSpeaker(t.id, 0, e.target.value)} /></td>
+                          <td><input value={t.speakers?.[1] || ""} onChange={(e) => updateTeamSpeaker(t.id, 1, e.target.value)} /></td>
+                          <td className="right">
+                            <button className="danger" onClick={() => deleteTeam(t.id)}>🗑️</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {activeTab === "salas" && (
+              <div className="card">
+                <div className="toolbar" style={{ justifyContent: "space-between" }}>
+                  <h2 style={{ margin: 0 }}>Salas</h2>
+                  <div className="toolbar">
+                    <button onClick={exportRoomsTemplate}>⬇️ Plantilla</button>
+                    <label className="tab" style={{ cursor: "pointer" }}>
+                      ⬆️ Importar
+                      <input type="file" accept=".xlsx,.xls" onChange={importRoomsFromExcel} style={{ display: "none" }} />
+                    </label>
+                    <button className="primary" onClick={addRoom}>➕ Añadir</button>
+                  </div>
+                </div>
+
+                <div className="spacer"></div>
+
+                {rooms.length === 0 ? (
+                  <div className="muted">No hay salas.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Ubicación</th>
+                        <th>Capacidad</th>
+                        <th>Disponible</th>
+                        <th className="right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rooms.map((r) => (
+                        <tr key={r.id}>
+                          <td><input value={r.name} onChange={(e) => updateRoom(r.id, "name", e.target.value)} /></td>
+                          <td><input value={r.location} onChange={(e) => updateRoom(r.id, "location", e.target.value)} /></td>
+                          <td style={{ width: 160 }}><input type="number" value={r.capacity} onChange={(e) => updateRoom(r.id, "capacity", Number(e.target.value))} /></td>
+                          <td style={{ width: 160 }}>
+                            <select value={String(r.available)} onChange={(e) => updateRoom(r.id, "available", e.target.value === "true")}>
+                              <option value="true">Sí</option>
+                              <option value="false">No</option>
+                            </select>
+                          </td>
+                          <td className="right"><button className="danger" onClick={() => deleteRoom(r.id)}>🗑️</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {activeTab === "jueces" && (
+              <div className="card">
+                <div className="toolbar" style={{ justifyContent: "space-between" }}>
+                  <h2 style={{ margin: 0 }}>Jueces</h2>
+                  <div className="toolbar">
+                    <button onClick={exportJudgesTemplate}>⬇️ Plantilla</button>
+                    <label className="tab" style={{ cursor: "pointer" }}>
+                      ⬆️ Importar
+                      <input type="file" accept=".xlsx,.xls" onChange={importJudgesFromExcel} style={{ display: "none" }} />
+                    </label>
+                    <button className="primary" onClick={addJudge}>➕ Añadir</button>
+                  </div>
+                </div>
+
+                <div className="spacer"></div>
+
+                {judges.length === 0 ? (
+                  <div className="muted">No hay jueces.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th>Institución</th>
+                        <th>Disponible</th>
+                        <th className="right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {judges.map((j) => (
+                        <tr key={j.id}>
+                          <td><input value={j.name} onChange={(e) => updateJudge(j.id, "name", e.target.value)} /></td>
+                          <td><input value={j.email} onChange={(e) => updateJudge(j.id, "email", e.target.value)} /></td>
+                          <td style={{ width: 170 }}>
+                            <select value={j.type} onChange={(e) => updateJudge(j.id, "type", e.target.value)}>
+                              <option value="principal">principal</option>
+                              <option value="panelista">panelista</option>
+                            </select>
+                          </td>
+                          <td><input value={j.institution} onChange={(e) => updateJudge(j.id, "institution", e.target.value)} /></td>
+                          <td style={{ width: 160 }}>
+                            <select value={String(j.available)} onChange={(e) => updateJudge(j.id, "available", e.target.value === "true")}>
+                              <option value="true">Sí</option>
+                              <option value="false">No</option>
+                            </select>
+                          </td>
+                          <td className="right"><button className="danger" onClick={() => deleteJudge(j.id)}>🗑️</button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            {activeTab === "rondas" && (
+              <div className="card">
+                <div className="toolbar" style={{ justifyContent: "space-between" }}>
+                  <h2 style={{ margin: 0 }}>Rondas</h2>
+                  <div className="toolbar">
+                    <button className="primary" onClick={generatePairings} disabled={teams.length < 2}>➕ Nueva ronda</button>
+                    <span className="muted small">Total: {rounds.length}</span>
+                  </div>
+                </div>
+
+                <div className="spacer"></div>
+
+                {rounds.length === 0 ? (
+                  <div className="muted">No hay rondas. Genera una desde Config.</div>
+                ) : (
+                  <>
+                    <div className="toolbar">
+                      <label className="small muted">Ronda actual</label>
+                      <select value={currentRound} onChange={(e) => setCurrentRound(Number(e.target.value))}>
+                        {rounds.map((r, idx) => (
+                          <option key={r.number} value={idx}>Ronda {r.number}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="hr"></div>
+
+                    <h3 style={{ marginTop: 0 }}>Ronda {rounds[currentRound]?.number}</h3>
+
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Mesa</th>
+                          <th>Sala</th>
+                          <th>A favor</th>
+                          <th>En contra</th>
+                          <th className="nowrap">Ítems (A / E)</th>
+                          <th>Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(rounds[currentRound]?.matches || []).map((m, idx) => {
+                          const favor = teams.find((t) => t.id === m.aFavor);
+                          const contra = teams.find((t) => t.id === m.enContra);
+
+                          return (
+                            <tr key={m.id}>
+                              <td className="nowrap">{idx + 1}</td>
+                              <td className="wrap">
+                                <div><b>{m.room?.name || "—"}</b></div>
+                                <div className="muted small">{m.room?.location || ""}</div>
+                                <div className="muted small">Jueces: {m.judges?.map((j) => j.name).join(", ") || "—"}</div>
+                              </td>
+                              <td className="wrap">
+                                {favor?.name || "—"}
+                                <div className="muted small">{favor?.school || ""}</div>
+                              </td>
+                              <td className="wrap">
+                                {contra?.name || "—"}
+                                <div className="muted small">{contra?.school || ""}</div>
+                              </td>
+                              <td className="nowrap">
+                                <input
+                                  type="number"
+                                  style={{ width: 80, display: "inline-block", marginRight: 8 }}
+                                  defaultValue={m.favorItems ?? ""}
+                                  onBlur={(e) => recordResult(currentRound, idx, e.target.value, m.contraItems ?? 0)}
+                                />
+                                /
+                                <input
+                                  type="number"
+                                  style={{ width: 80, display: "inline-block", marginLeft: 8 }}
+                                  defaultValue={m.contraItems ?? ""}
+                                  onBlur={(e) => recordResult(currentRound, idx, m.favorItems ?? 0, e.target.value)}
+                                />
+                              </td>
+                              <td>{m.completed ? <span className="pill">Completado</span> : <span className="pill">Pendiente</span>}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </div>
+            )}
+
+            {activeTab === "ranking" && (
+              <div className="card">
+                <div className="toolbar" style={{ justifyContent: "space-between" }}>
+                  <h2 style={{ margin: 0 }}>Clasificación</h2>
+                  <button className="primary" onClick={exportStandings}>⬇️ Exportar Excel</button>
+                </div>
+
+                <div className="spacer"></div>
+
+                {teams.length === 0 ? (
+                  <div className="muted">Añade equipos primero.</div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Pos</th>
+                        <th>Equipo</th>
+                        <th>Institución</th>
+                        <th>Puntos</th>
+                        <th>Ítems</th>
+                        <th className="nowrap">A / E</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getStandings().map((t, idx) => (
+                        <tr key={t.id}>
+                          <td className="nowrap"><b>{idx + 1}</b></td>
+                          <td className="wrap">{t.name}</td>
+                          <td className="wrap muted">{t.school}</td>
+                          <td className="nowrap">{t.points}</td>
+                          <td className="nowrap">{t.itemsWon}</td>
+                          <td className="nowrap">{t.positions?.afavor || 0} / {t.positions?.enContra || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            <div className="card">
+              <div className="muted small">
+                ✅ Usuarios + torneos se guardan en <code>localStorage</code> (persisten de un día para otro).<br/>
+                📌 Lados del debate: <b>A favor</b> / <b>En contra</b>.
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<DebateTabulator />);
+    </script>
+  </body>
+</html>
