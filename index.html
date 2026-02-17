@@ -8,6 +8,8 @@
     <script>
       window.COMPANY_LOGO_URL = "./logo.jpg";
       window.COMPANY_NAME = "Learn By Talking Formación";
+      window.SUPABASE_URL = "https://paaatgxujyknjqdybanr.supabase.co";
+      window.SUPABASE_KEY = "sb_publishable_p4Gql96nQ1GpoOxa7aGWwQ_Sm5AykJC";
     </script>
 
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -19,340 +21,74 @@
       :root {
         color-scheme: light;
         --brand: #930203;
-        --brand-light: rgba(147, 2, 3, 0.08);
-        --brand-border: rgba(147, 2, 3, 0.25);
+        --brand-light: rgba(147,2,3,0.08);
+        --brand-border: rgba(147,2,3,0.25);
         --bg: #f6f7fb;
         --card: #ffffff;
         --border: #e8e8ee;
         --muted: #666;
         --danger: #dc2626;
       }
-
       *, *::before, *::after { box-sizing: border-box; }
-
-      body {
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        margin: 0;
-        background: var(--bg);
-        color: #111;
-        font-size: 14px;
-        overflow-x: hidden;
-      }
-
-      header {
-        background: var(--card);
-        border-bottom: 1px solid var(--border);
-        padding: 12px 16px;
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        justify-content: space-between;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-      }
-
-      .header-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-      }
-
-      .brand-logo {
-        width: 40px;
-        height: 40px;
-        object-fit: contain;
-        border-radius: 8px;
-        border: 1px solid #eee;
-        background: #fff;
-        padding: 4px;
-        flex-shrink: 0;
-      }
-
-      h1 {
-        font-size: 15px;
-        margin: 0;
-        color: var(--brand);
-        white-space: nowrap;
-      }
-
-      .container {
-        max-width: 100%;
-        width: 100%;
-        margin: 0 auto;
-        padding: 14px 16px 40px;
-      }
-
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        width: 100%;
-        overflow: hidden;
-      }
-
-      .toolbar {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .tabs {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-
-      /* Grid layouts — colapsan en móvil */
-      .row { display: grid; gap: 14px; }
-      .row.cols2 { grid-template-columns: 1fr 1fr; }
-      .row.cols3 { grid-template-columns: 1fr 1fr 1fr; }
-      .row.cols4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-
-      @media (max-width: 700px) {
-        .row.cols2, .row.cols3, .row.cols4 { grid-template-columns: 1fr; }
-        header { flex-wrap: wrap; }
-        h1 { font-size: 13px; }
-      }
-
-      label {
-        font-size: 12px;
-        display: block;
-        margin-bottom: 5px;
-        color: var(--brand);
-        font-weight: 600;
-      }
-
-      input, select, textarea {
-        width: 100%;
-        padding: 9px 11px;
-        border: 1px solid #d9d9e3;
-        border-radius: 10px;
-        background: #fff;
-        color: #111;
-        font-size: 13px;
-        outline: none;
-        transition: border-color 0.15s;
-      }
-
-      input:focus, select:focus { border-color: var(--brand); }
-
-      button {
-        padding: 9px 13px;
-        border-radius: 10px;
-        border: 1px solid #d9d9e3;
-        background: white;
-        cursor: pointer;
-        color: var(--brand);
-        font-size: 13px;
-        font-weight: 500;
-        white-space: nowrap;
-        transition: all 0.15s;
-      }
-      button:hover { background: #f5f5f7; }
-      button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
-      button.primary:hover { background: #7a0102; }
-      button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
-      button.danger:hover { background: #b91c1c; }
-      button.sm { padding: 6px 10px; font-size: 12px; }
-      button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-      .tab {
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid #d9d9e3;
-        background: white;
-        font-size: 12px;
-        color: var(--brand);
-        white-space: nowrap;
-      }
-      .tab.active {
-        background: var(--brand-light);
-        border-color: var(--brand-border);
-        font-weight: 600;
-      }
-
-      /* ===== TABLA RESPONSIVE SIN SCROLL LATERAL ===== */
-      .table-wrap {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        border-radius: 8px;
-      }
-
-      /* Tabla de rondas: diseño compacto tipo card-stack en móvil */
-      .rounds-table { width: 100%; border-collapse: collapse; }
-      .rounds-table th, .rounds-table td {
-        border-bottom: 1px solid #eee;
-        padding: 10px 8px;
-        text-align: left;
-        font-size: 13px;
-        vertical-align: top;
-      }
-      .rounds-table th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-
-      /* En pantallas pequeñas, convertimos tabla de ronda en cards */
-      @media (max-width: 800px) {
-        .rounds-table thead { display: none; }
-        .rounds-table tr {
-          display: block;
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          margin-bottom: 10px;
-          padding: 10px;
-        }
-        .rounds-table td {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 8px;
-          border-bottom: 1px solid #f0f0f0;
-          padding: 6px 0;
-          font-size: 13px;
-        }
-        .rounds-table td:last-child { border-bottom: none; }
-        .rounds-table td::before {
-          content: attr(data-label);
-          font-size: 11px;
-          font-weight: 600;
-          color: var(--muted);
-          min-width: 80px;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-          flex-shrink: 0;
-        }
-        .rounds-table td .score-pair {
-          flex-direction: column;
-          gap: 6px;
-        }
-      }
-
-      /* Score inputs en par */
-      .score-pair {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .score-pair input {
-        width: 72px;
-        min-width: 0;
-        padding: 7px;
-        text-align: center;
-      }
-      .score-sep { color: var(--muted); font-weight: 700; }
-
-      /* Tabla genérica */
-      table { width: 100%; border-collapse: collapse; }
-      th, td { border-bottom: 1px solid #eee; padding: 10px 8px; text-align: left; font-size: 13px; vertical-align: top; }
-      th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-
-      @media (max-width: 700px) {
-        table { display: block; overflow-x: auto; }
-        table input, table select { min-width: 90px; }
-      }
-
-      .muted { color: var(--muted); }
-      .small { font-size: 12px; }
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #f0f1f5;
-        font-size: 11px;
-        color: #555;
-        font-weight: 500;
-      }
-      .pill.green { background: #d1fae5; color: #065f46; }
-      .pill.orange { background: #fef3c7; color: #92400e; }
-      .pill.blue { background: #dbeafe; color: #1d4ed8; }
-
-      .spacer { height: 10px; }
-      .hr { height: 1px; background: #eee; margin: 12px 0; }
-      .right { text-align: right; }
-      .nowrap { white-space: nowrap; }
-      .wrap { word-break: break-word; }
-      code { background: #f0f1f5; padding: 2px 6px; border-radius: 6px; color: #111; font-size: 12px; }
-
-      .stack { display: grid; gap: 8px; }
-
-      .speakerRow {
-        display: grid;
-        grid-template-columns: 1fr 180px 110px;
-        gap: 8px;
-        align-items: center;
-      }
-      @media (max-width: 700px) { .speakerRow { grid-template-columns: 1fr; } }
-
-      /* Round list */
-      .round-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        flex-wrap: wrap;
-        padding: 10px 12px;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        cursor: pointer;
-        transition: background 0.12s;
-        background: #fff;
-        margin-bottom: 6px;
-      }
-      .round-header:hover { background: #fafafa; }
-      .round-header.active { border-color: var(--brand-border); background: var(--brand-light); }
-
-      /* Toast */
-      .toast {
-        border: 1px solid var(--brand-border);
-        background: rgba(147,2,3,0.04);
-        border-radius: 12px;
-        padding: 14px 16px;
-      }
-
-      /* Match card on mobile */
-      .match-row-mobile {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 8px;
-        background: #fff;
-      }
-      .match-row-mobile .match-teams {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 8px;
-      }
-      .vs-badge {
-        background: var(--brand);
-        color: #fff;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 2px 6px;
-        border-radius: 4px;
-        flex-shrink: 0;
-      }
-
-      /* Sync status */
-      .sync-badge {
-        font-size: 11px;
-        padding: 3px 8px;
-        border-radius: 999px;
-        background: #d1fae5;
-        color: #065f46;
-        font-weight: 600;
-      }
-      .sync-badge.error { background: #fee2e2; color: #991b1b; }
-      .sync-badge.loading { background: #e0e7ff; color: #3730a3; }
+      body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:var(--bg); color:#111; font-size:14px; overflow-x:hidden; }
+      header { background:var(--card); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; gap:10px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+      .header-left { display:flex; align-items:center; gap:10px; min-width:0; }
+      .brand-logo { width:40px; height:40px; object-fit:contain; border-radius:8px; border:1px solid #eee; background:#fff; padding:4px; flex-shrink:0; }
+      h1 { font-size:15px; margin:0; color:var(--brand); white-space:nowrap; }
+      .container { max-width:100%; width:100%; margin:0 auto; padding:14px 16px 40px; }
+      .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); width:100%; overflow:hidden; }
+      .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+      .tabs { display:flex; gap:6px; flex-wrap:wrap; }
+      .row { display:grid; gap:14px; }
+      .row.cols2 { grid-template-columns:1fr 1fr; }
+      .row.cols3 { grid-template-columns:1fr 1fr 1fr; }
+      @media(max-width:700px){ .row.cols2,.row.cols3{grid-template-columns:1fr;} header{flex-wrap:wrap;} h1{font-size:13px;} }
+      label { font-size:12px; display:block; margin-bottom:5px; color:var(--brand); font-weight:600; }
+      input,select,textarea { width:100%; padding:9px 11px; border:1px solid #d9d9e3; border-radius:10px; background:#fff; color:#111; font-size:13px; outline:none; transition:border-color .15s; }
+      input:focus,select:focus { border-color:var(--brand); }
+      button { padding:9px 13px; border-radius:10px; border:1px solid #d9d9e3; background:white; cursor:pointer; color:var(--brand); font-size:13px; font-weight:500; white-space:nowrap; transition:all .15s; }
+      button:hover { background:#f5f5f7; }
+      button.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+      button.primary:hover { background:#7a0102; }
+      button.danger { background:var(--danger); border-color:var(--danger); color:#fff; }
+      button.danger:hover { background:#b91c1c; }
+      button.sm { padding:6px 10px; font-size:12px; }
+      button:disabled { opacity:.5; cursor:not-allowed; }
+      .tab { padding:8px 12px; border-radius:999px; border:1px solid #d9d9e3; background:white; font-size:12px; color:var(--brand); white-space:nowrap; }
+      .tab.active { background:var(--brand-light); border-color:var(--brand-border); font-weight:600; }
+      .table-wrap { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px; }
+      table { width:100%; border-collapse:collapse; }
+      th,td { border-bottom:1px solid #eee; padding:10px 8px; text-align:left; font-size:13px; vertical-align:top; }
+      th { font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; }
+      .muted { color:var(--muted); }
+      .small { font-size:12px; }
+      .pill { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; background:#f0f1f5; font-size:11px; color:#555; font-weight:500; }
+      .pill.green { background:#d1fae5; color:#065f46; }
+      .pill.orange { background:#fef3c7; color:#92400e; }
+      .pill.blue { background:#dbeafe; color:#1d4ed8; }
+      .spacer { height:10px; }
+      .hr { height:1px; background:#eee; margin:12px 0; }
+      .right { text-align:right; }
+      .nowrap { white-space:nowrap; }
+      .wrap { word-break:break-word; }
+      code { background:#f0f1f5; padding:2px 6px; border-radius:6px; color:#111; font-size:12px; }
+      .stack { display:grid; gap:8px; }
+      .speakerRow { display:grid; grid-template-columns:1fr 180px 110px; gap:8px; align-items:center; }
+      @media(max-width:700px){ .speakerRow{grid-template-columns:1fr;} table{display:block;overflow-x:auto;} }
+      .round-header { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border); border-radius:10px; cursor:pointer; transition:background .12s; background:#fff; margin-bottom:6px; }
+      .round-header:hover { background:#fafafa; }
+      .round-header.active { border-color:var(--brand-border); background:var(--brand-light); }
+      .toast { border:1px solid var(--brand-border); background:rgba(147,2,3,0.04); border-radius:12px; padding:14px 16px; }
+      .vs-badge { background:var(--brand); color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; flex-shrink:0; }
+      .sync-badge { font-size:11px; padding:3px 8px; border-radius:999px; background:#d1fae5; color:#065f46; font-weight:600; }
+      .sync-badge.loading { background:#e0e7ff; color:#3730a3; }
+      .sync-badge.error { background:#fee2e2; color:#991b1b; }
+      .error-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; color:#991b1b; font-size:13px; margin-bottom:12px; }
+      .score-pair { display:flex; align-items:center; gap:6px; }
+      .score-pair input { width:80px; min-width:0; padding:7px; text-align:center; }
+      .score-sep { color:var(--muted); font-weight:700; }
     </style>
   </head>
-
   <body>
     <header>
       <div class="header-left">
@@ -364,821 +100,479 @@
       </div>
       <div id="header-actions" class="toolbar"></div>
     </header>
-
-    <div class="container">
-      <div id="root"></div>
-    </div>
+    <div class="container"><div id="root"></div></div>
 
     <script type="text/babel">
-      const { useEffect, useMemo, useState, useCallback, useRef } = React;
+      const { useEffect, useMemo, useState, useRef } = React;
 
       document.getElementById("companyLogo").src = window.COMPANY_LOGO_URL || "";
-      document.getElementById("companyLogo").onerror = () => {
-        document.getElementById("companyLogo").style.display = "none";
-      };
-      document.getElementById("companyName").textContent =
-        "Un proyecto de " + (window.COMPANY_NAME || "Learn By Talking Formación");
+      document.getElementById("companyLogo").onerror = () => { document.getElementById("companyLogo").style.display="none"; };
+      document.getElementById("companyName").textContent = "Un proyecto de " + (window.COMPANY_NAME || "Learn By Talking Formación");
 
-      // ===== Storage: usa window.storage (cross-device) si existe, si no localStorage =====
-      const storage = {
-        async get(key) {
-          if (window.storage) {
-            try {
-              const r = await window.storage.get(key);
-              return r ? { value: r.value } : null;
-            } catch(e) { return null; }
-          }
-          const v = localStorage.getItem(key);
-          return v ? { value: v } : null;
+      // ===== SUPABASE (fetch directo, sin SDK) =====
+      const SB = window.SUPABASE_URL;
+      const KEY = window.SUPABASE_KEY;
+      function hdr(extra={}) {
+        return { "Content-Type":"application/json", apikey:KEY, Authorization:"Bearer "+KEY, Prefer:"return=representation", ...extra };
+      }
+      const db = {
+        async getUser(email) {
+          const r = await fetch(`${SB}/rest/v1/users?email=eq.${encodeURIComponent(email)}&limit=1`, { headers:hdr() });
+          return (await r.json())?.[0] || null;
         },
-        async set(key, value) {
-          if (window.storage) {
-            try { await window.storage.set(key, value); } catch(e) {}
-          }
-          localStorage.setItem(key, value);
+        async createUser(u) {
+          const r = await fetch(`${SB}/rest/v1/users`, { method:"POST", headers:hdr(), body:JSON.stringify(u) });
+          if (!r.ok) { const e=await r.json(); throw new Error(e?.message||"Error al crear usuario"); }
+          return (await r.json())?.[0];
         },
-        async remove(key) {
-          if (window.storage) {
-            try { await window.storage.delete(key); } catch(e) {}
-          }
-          localStorage.removeItem(key);
+        async getTournaments(userId) {
+          const r = await fetch(`${SB}/rest/v1/tournaments?user_id=eq.${userId}&order=last_modified.desc`, { headers:hdr() });
+          if (!r.ok) throw new Error("Error al cargar torneos");
+          return await r.json();
+        },
+        async upsertTournament(t) {
+          const r = await fetch(`${SB}/rest/v1/tournaments`, {
+            method:"POST",
+            headers:hdr({ Prefer:"resolution=merge-duplicates,return=representation" }),
+            body:JSON.stringify(t)
+          });
+          if (!r.ok) { const e=await r.json(); throw new Error(e?.message||"Error al guardar"); }
+          return (await r.json())?.[0];
+        },
+        async deleteTournament(id) {
+          const r = await fetch(`${SB}/rest/v1/tournaments?id=eq.${id}`, { method:"DELETE", headers:hdr() });
+          if (!r.ok) throw new Error("Error al eliminar");
         }
       };
 
-      function uid() {
-        return Date.now() + "" + Math.floor(Math.random() * 1e6);
+      function uid() { return Date.now()+""+Math.floor(Math.random()*1e6); }
+      async function sha256(t) {
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+        return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
       }
 
-      async function sha256(text) {
-        const enc = new TextEncoder().encode(text);
-        const buf = await crypto.subtle.digest("SHA-256", enc);
-        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-      }
-
-      async function loadUsers() {
-        const stored = await storage.get("users");
-        return stored ? JSON.parse(stored.value) : [];
-      }
-
-      const ROLE_OPTIONS = [
-        { value: "Introductor", label: "Introductor" },
-        { value: "Primer refutador", label: "Primer refutador" },
-        { value: "Segundo refutador", label: "Segundo refutador" },
-        { value: "Conclusor", label: "Conclusor" },
-        { value: "Libre", label: "Libre (5º orador)" }
+      const ROLES = [
+        {value:"Introductor",label:"Introductor"},
+        {value:"Primer refutador",label:"Primer refutador"},
+        {value:"Segundo refutador",label:"Segundo refutador"},
+        {value:"Conclusor",label:"Conclusor"},
+        {value:"Libre",label:"Libre (5º orador)"}
+      ];
+      const TIEBREAKS = [
+        "Enfrentamiento directo > Ítems","Ítems > Enfrentamiento directo",
+        "Enfrentamiento directo > Ítems > Votos","Enfrentamiento directo > Votos > Ítems",
+        "Ítems > Enfrentamiento directo > Votos","Ítems > Votos > Enfrentamiento directo",
+        "Votos > Enfrentamiento directo > Ítems","Votos > Ítems > Enfrentamiento directo"
       ];
 
-      const TIEBREAK_OPTIONS = [
-        "Enfrentamiento directo > Ítems",
-        "Ítems > Enfrentamiento directo",
-        "Enfrentamiento directo > Ítems > Votos",
-        "Enfrentamiento directo > Votos > Ítems",
-        "Ítems > Enfrentamiento directo > Votos",
-        "Ítems > Votos > Enfrentamiento directo",
-        "Votos > Enfrentamiento directo > Ítems",
-        "Votos > Ítems > Enfrentamiento directo"
-      ];
-
-      function DebateTabulator() {
-        // ===== Auth =====
-        const [isAuthenticated, setIsAuthenticated] = useState(false);
-        const [currentUser, setCurrentUser] = useState(null);
-        const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-        const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
-        const [hasAnyUser, setHasAnyUser] = useState(null);
-        const [isRegistering, setIsRegistering] = useState(false);
-        const [syncStatus, setSyncStatus] = useState("ok"); // "ok" | "saving" | "error"
-
-        // ===== Toast =====
+      function App() {
+        // Auth
+        const [auth, setAuth] = useState(false);
+        const [user, setUser] = useState(null);
+        const [loginF, setLoginF] = useState({email:"",password:""});
+        const [regF, setRegF] = useState({name:"",email:"",password:"",confirm:""});
+        const [isReg, setIsReg] = useState(false);
+        const [authErr, setAuthErr] = useState("");
+        const [authLoad, setAuthLoad] = useState(false);
+        // Sync
+        const [sync, setSync] = useState("ok");
+        const saveT = useRef(null);
+        // Toast
         const [toast, setToast] = useState(null);
-        function showToast(title, message, ms = 5500) {
-          setToast({ title, message });
-          window.clearTimeout(window.__toastTimer);
-          window.__toastTimer = window.setTimeout(() => setToast(null), ms);
+        function showToast(title, msg, ms=5500) {
+          setToast({title,msg}); clearTimeout(window.__tt);
+          window.__tt = setTimeout(()=>setToast(null),ms);
         }
-
-        // ===== App state =====
-        const [config, setConfig] = useState({
-          tournamentName: "",
-          roundsClasif: 6,
-          roundsFinales: 4,
-          tournamentSystem: "suizo",
-          allowRepeatMatchups: false,
-          numGroups: 4,
-          groupSize: 4,
-          speakersPerTeam: 2,
-          tiebreak: "Ítems > Enfrentamiento directo"
-        });
-
+        // State
+        const [cfg, setCfg] = useState({tournamentName:"",roundsClasif:6,roundsFinales:4,tournamentSystem:"suizo",allowRepeatMatchups:false,numGroups:4,groupSize:4,speakersPerTeam:2,tiebreak:"Ítems > Enfrentamiento directo"});
         const [teams, setTeams] = useState([]);
         const [rounds, setRounds] = useState([]);
-        const [currentRound, setCurrentRound] = useState(0);
+        const [curRound, setCurRound] = useState(0);
         const [groups, setGroups] = useState([]);
         const [rooms, setRooms] = useState([]);
         const [judges, setJudges] = useState([]);
         const [tournaments, setTournaments] = useState([]);
-        const [currentTournamentId, setCurrentTournamentId] = useState(null);
-        const [activeTab, setActiveTab] = useState("torneos");
+        const [tid, setTid] = useState(null);
+        const [tab, setTab] = useState("torneos");
+        const [editRnd, setEditRnd] = useState(null);
+        const [rndTmp, setRndTmp] = useState("");
 
-        // ===== Round editing state =====
-        const [editingRoundName, setEditingRoundName] = useState(null); // roundIdx being renamed
-        const [roundNameTemp, setRoundNameTemp] = useState("");
+        const hasTournament = !!tid;
 
-        const hasTournament = !!currentTournamentId;
+        useEffect(()=>{ if(auth && user) loadTournaments(); },[auth,user]);
 
-        // ===== First load =====
-        useEffect(() => {
-          (async () => {
-            try {
-              const users = await loadUsers();
-              const any = users.length > 0;
-              setHasAnyUser(any);
-              setIsRegistering(!any);
-            } catch(e) {
-              setHasAnyUser(false);
-              setIsRegistering(true);
-            }
-          })();
-        }, []);
+        useEffect(()=>{
+          if(!auth||!user||!tid) return;
+          setSync("saving"); clearTimeout(saveT.current);
+          saveT.current = setTimeout(()=>{ doSave().then(()=>setSync("ok")).catch(()=>setSync("error")); },1000);
+        },[teams,rounds,rooms,judges,cfg,groups,curRound]);
 
-        useEffect(() => {
-          if (isAuthenticated && currentUser) loadUserData();
-        }, [isAuthenticated, currentUser]);
-
-        // ===== Autosave =====
-        const saveTimer = useRef(null);
-        useEffect(() => {
-          if (isAuthenticated && currentUser && currentTournamentId) {
-            setSyncStatus("saving");
-            clearTimeout(saveTimer.current);
-            saveTimer.current = setTimeout(() => {
-              saveCurrentTournament().then(() => setSyncStatus("ok")).catch(() => setSyncStatus("error"));
-            }, 800);
-          }
-        }, [teams, rounds, rooms, judges, config, groups, currentRound]);
-
-        // ===== Header actions =====
-        useEffect(() => {
+        useEffect(()=>{
           const node = document.getElementById("header-actions");
-          if (!node) return;
-          const HeaderButtons = () => (
+          if(!node) return;
+          const H = ()=>(
             <div className="toolbar">
-              {isAuthenticated ? (
+              {auth ? (
                 <>
-                  {syncStatus === "saving" && <span className="sync-badge loading">💾 Guardando…</span>}
-                  {syncStatus === "ok" && <span className="sync-badge">✓ Guardado</span>}
-                  {syncStatus === "error" && <span className="sync-badge error">⚠ Error al guardar</span>}
-                  <span className="small muted">👤 {currentUser?.name}</span>
-                  <button className="primary sm" onClick={handleLogout}>🚪 Salir</button>
+                  {sync==="saving"&&<span className="sync-badge loading">💾 Guardando…</span>}
+                  {sync==="ok"&&<span className="sync-badge">☁️ Guardado</span>}
+                  {sync==="error"&&<span className="sync-badge error">⚠ Error</span>}
+                  <span className="small muted">👤 {user?.name}</span>
+                  <button className="primary sm" onClick={logout}>🚪 Salir</button>
                 </>
-              ) : (
-                <span className="small muted">No autenticado</span>
-              )}
+              ):(<span className="small muted">No autenticado</span>)}
             </div>
           );
-          ReactDOM.createRoot(node).render(<HeaderButtons />);
-        }, [isAuthenticated, currentUser, syncStatus]);
+          ReactDOM.createRoot(node).render(<H/>);
+        },[auth,user,sync]);
 
-        // ===== Speakers helpers =====
-        function makeDefaultSpeakers(n) {
-          const roles = ["Introductor", "Primer refutador", "Segundo refutador", "Conclusor", "Libre"];
-          return Array.from({ length: n }).map((_, i) => ({
-            id: uid() + i,
-            name: "",
-            role: roles[i] || "Libre",
-            points: 0
-          }));
+        // Speakers helpers
+        function mkSpeakers(n) {
+          const rs=["Introductor","Primer refutador","Segundo refutador","Conclusor","Libre"];
+          return Array.from({length:n}).map((_,i)=>({id:uid()+i,name:"",role:rs[i]||"Libre",points:0}));
         }
-
-        function normalizeTeamsToSpeakersPerTeam(nextTeams, speakersPerTeam) {
-          const n = Math.max(2, Math.min(5, Number(speakersPerTeam || 2)));
-          return nextTeams.map(t => {
-            const existing = Array.isArray(t.speakers) ? t.speakers : [];
-            const speakers = [...existing];
-            if (speakers.length < n) speakers.push(...makeDefaultSpeakers(n - speakers.length));
-            else if (speakers.length > n) speakers.length = n;
-            return { ...t, speakers };
+        function normTeams(ts,n) {
+          const c=Math.max(2,Math.min(5,Number(n||2)));
+          return ts.map(t=>{
+            const sp=[...(Array.isArray(t.speakers)?t.speakers:[])];
+            if(sp.length<c) sp.push(...mkSpeakers(c-sp.length));
+            else if(sp.length>c) sp.length=c;
+            return {...t,speakers:sp};
           });
         }
 
-        // ===== Auth =====
-        async function handleLogin() {
+        // Auth
+        async function login() {
+          setAuthErr(""); setAuthLoad(true);
           try {
-            const users = await loadUsers();
-            const passwordHash = await sha256(loginForm.password);
-            const email = loginForm.email.trim().toLowerCase();
-            const user = users.find(u => u.email === email && u.passwordHash === passwordHash);
-            if (!user) return alert("Email o contraseña incorrectos");
-            setCurrentUser(user);
-            setIsAuthenticated(true);
-            setLoginForm({ email: "", password: "" });
-          } catch(e) { alert("Email o contraseña incorrectos"); }
+            const email=loginF.email.trim().toLowerCase();
+            const hash=await sha256(loginF.password);
+            const u=await db.getUser(email);
+            if(!u||u.password_hash!==hash){setAuthErr("Email o contraseña incorrectos");return;}
+            setUser(u); setAuth(true); setLoginF({email:"",password:""});
+          } catch(e){setAuthErr("Error de conexión: "+e.message);}
+          finally{setAuthLoad(false);}
         }
-
-        async function handleRegister() {
-          const name = registerForm.name.trim();
-          const email = registerForm.email.trim().toLowerCase();
-          if (!name) return alert("Pon un nombre de usuario");
-          if (!email) return alert("Pon un email");
-          if (registerForm.password !== registerForm.confirmPassword) return alert("Las contraseñas no coinciden");
-          if (registerForm.password.length < 6) return alert("La contraseña debe tener al menos 6 caracteres");
+        async function register() {
+          setAuthErr(""); setAuthLoad(true);
+          const name=regF.name.trim(), email=regF.email.trim().toLowerCase();
+          if(!name){setAuthErr("Pon un nombre");setAuthLoad(false);return;}
+          if(!email){setAuthErr("Pon un email");setAuthLoad(false);return;}
+          if(regF.password!==regF.confirm){setAuthErr("Las contraseñas no coinciden");setAuthLoad(false);return;}
+          if(regF.password.length<6){setAuthErr("Mínimo 6 caracteres");setAuthLoad(false);return;}
           try {
-            const users = await loadUsers();
-            if (users.find(u => u.email === email)) return alert("Este email ya está registrado");
-            const newUser = {
-              id: uid(), name, email,
-              passwordHash: await sha256(registerForm.password),
-              createdAt: new Date().toISOString()
-            };
-            users.push(newUser);
-            await storage.set("users", JSON.stringify(users));
-            setHasAnyUser(true);
-            setCurrentUser(newUser);
-            setIsAuthenticated(true);
-            setRegisterForm({ name: "", email: "", password: "", confirmPassword: "" });
-            setIsRegistering(false);
-          } catch(e) { alert("Error al crear la cuenta"); }
+            const ex=await db.getUser(email);
+            if(ex){setAuthErr("Email ya registrado");return;}
+            const nu={id:uid(),name,email,password_hash:await sha256(regF.password),created_at:new Date().toISOString()};
+            await db.createUser(nu);
+            setUser(nu); setAuth(true); setRegF({name:"",email:"",password:"",confirm:""}); setIsReg(false);
+          } catch(e){setAuthErr("Error: "+e.message);}
+          finally{setAuthLoad(false);}
+        }
+        function logout() {
+          setAuth(false);setUser(null);setTournaments([]);setTid(null);
+          resetData();setTab("torneos");setIsReg(false);setToast(null);setSync("ok");
         }
 
-        function handleLogout() {
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-          setTournaments([]);
-          setCurrentTournamentId(null);
-          resetTournamentData();
-          setActiveTab("torneos");
-          setIsRegistering(false);
-          setToast(null);
-          setSyncStatus("ok");
+        // Persistence
+        async function loadTournaments() {
+          try { const rows=await db.getTournaments(user.id); setTournaments(rows||[]); } catch(e){console.error(e);}
         }
-
-        // ===== Persistence =====
-        async function loadUserData() {
+        async function doSave() {
+          const row={id:tid,user_id:user.id,name:cfg.tournamentName||"Torneo sin nombre",data:JSON.stringify({cfg,teams,rounds,rooms,judges,groups,curRound}),last_modified:new Date().toISOString()};
+          await db.upsertTournament(row);
+          setTournaments(prev=>[row,...prev.filter(t=>t.id!==tid)]);
+        }
+        function openTournament(row) {
+          const d=typeof row.data==="string"?JSON.parse(row.data):(row.data||{});
+          setTid(row.id); setCfg(d.cfg||cfg);
+          setTeams(normTeams(d.teams||[],d.cfg?.speakersPerTeam??2));
+          setRounds(d.rounds||[]); setRooms(d.rooms||[]); setJudges(d.judges||[]);
+          setGroups(d.groups||[]); setCurRound(d.curRound||0); setTab("config");
+          showToast("✅ Torneo cargado","Revisa ⚙️ Config, luego 👥 Equipos y genera 🧾 Rondas.");
+        }
+        function newTournament() {
+          setTid(uid()); resetData(); setTab("config");
+          showToast("✅ Torneo creado","Configura en ⚙️ Config y añade 👥 Equipos.");
+        }
+        function resetData() {
+          setCfg({tournamentName:"",roundsClasif:6,roundsFinales:4,tournamentSystem:"suizo",allowRepeatMatchups:false,numGroups:4,groupSize:4,speakersPerTeam:2,tiebreak:"Ítems > Enfrentamiento directo"});
+          setTeams([]);setRounds([]);setRooms([]);setJudges([]);setGroups([]);setCurRound(0);
+        }
+        async function deleteTournament(id) {
+          if(!confirm("¿Eliminar este torneo?")) return;
           try {
-            const key = `tournaments_${currentUser.id}`;
-            const stored = await storage.get(key);
-            if (stored) {
-              const data = JSON.parse(stored.value);
-              setTournaments(data.tournaments || []);
-            } else {
-              setTournaments([]);
-            }
-          } catch(e) { setTournaments([]); }
+            await db.deleteTournament(id);
+            setTournaments(prev=>prev.filter(t=>t.id!==id));
+            if(tid===id){setTid(null);resetData();setTab("torneos");}
+          } catch(e){alert("Error: "+e.message);}
         }
 
-        async function saveCurrentTournament() {
-          if (!currentTournamentId) return;
-          const tournamentData = {
-            id: currentTournamentId,
-            name: config.tournamentName || "Torneo sin nombre",
-            config, teams, rounds, rooms, judges, groups, currentRound,
-            lastModified: new Date().toISOString()
-          };
-          const updated = tournaments.filter(t => t.id !== currentTournamentId);
-          updated.push(tournamentData);
-          const key = `tournaments_${currentUser.id}`;
-          await storage.set(key, JSON.stringify({ tournaments: updated }));
-          setTournaments(updated);
-        }
-
-        function loadTournament(t) {
-          setCurrentTournamentId(t.id);
-          setConfig(t.config || config);
-          const normalizedTeams = normalizeTeamsToSpeakersPerTeam(t.teams || [], t.config?.speakersPerTeam ?? 2);
-          setTeams(normalizedTeams);
-          setRounds(t.rounds || []);
-          setRooms(t.rooms || []);
-          setJudges(t.judges || []);
-          setGroups(t.groups || []);
-          setCurrentRound(t.currentRound || 0);
-          setActiveTab("config");
-          showToast("✅ Torneo cargado", "Revisa ⚙️ Config y después 👥 Equipos. Cuando estés listo genera 🧾 Rondas.");
-        }
-
-        function createNewTournament() {
-          const newId = uid();
-          setCurrentTournamentId(newId);
-          resetTournamentData();
-          setActiveTab("config");
-          showToast("✅ Torneo creado", "Configura en ⚙️ Config, añade 👥 Equipos y luego genera 🧾 Rondas.");
-        }
-
-        function resetTournamentData() {
-          setConfig({
-            tournamentName: "", roundsClasif: 6, roundsFinales: 4,
-            tournamentSystem: "suizo", allowRepeatMatchups: false,
-            numGroups: 4, groupSize: 4, speakersPerTeam: 2,
-            tiebreak: "Ítems > Enfrentamiento directo"
-          });
-          setTeams([]); setRounds([]); setRooms([]); setJudges([]);
-          setGroups([]); setCurrentRound(0);
-        }
-
-        async function deleteTournament(tournamentId) {
-          if (!confirm("¿Estás seguro de eliminar este torneo?")) return;
-          try {
-            const updated = tournaments.filter(t => t.id !== tournamentId);
-            const key = `tournaments_${currentUser.id}`;
-            await storage.set(key, JSON.stringify({ tournaments: updated }));
-            setTournaments(updated);
-            if (currentTournamentId === tournamentId) {
-              setCurrentTournamentId(null);
-              resetTournamentData();
-              setActiveTab("torneos");
-            }
-          } catch(e) { alert("Error al eliminar el torneo"); }
-        }
-
-        // ===== CRUD Teams =====
+        // Teams
         function addTeam() {
-          const n = Math.max(2, Math.min(5, Number(config.speakersPerTeam || 2)));
-          const newTeam = {
-            id: uid(), name: `Equipo ${teams.length + 1}`, school: "",
-            speakers: makeDefaultSpeakers(n),
-            points: 0, itemsWon: 0, votesWon: 0, opponents: [],
-            positions: { afavor: 0, enContra: 0 }
-          };
-          setTeams(normalizeTeamsToSpeakersPerTeam([...teams, newTeam], n));
+          const n=Math.max(2,Math.min(5,Number(cfg.speakersPerTeam||2)));
+          setTeams(normTeams([...teams,{id:uid(),name:`Equipo ${teams.length+1}`,school:"",speakers:mkSpeakers(n),points:0,itemsWon:0,votesWon:0,opponents:[],positions:{afavor:0,enContra:0}}],n));
         }
-        function deleteTeam(id) { setTeams(teams.filter(t => t.id !== id)); }
-        function updateTeam(id, field, value) {
-          setTeams(teams.map(t => t.id === id ? { ...t, [field]: value } : t));
-        }
-        function updateSpeaker(teamId, speakerId, field, value) {
-          setTeams(teams.map(t => {
-            if (t.id !== teamId) return t;
-            const speakers = (t.speakers || []).map(s => s.id === speakerId ? { ...s, [field]: value } : s);
-            return { ...t, speakers };
-          }));
-        }
+        function delTeam(id){setTeams(teams.filter(t=>t.id!==id));}
+        function updTeam(id,f,v){setTeams(teams.map(t=>t.id===id?{...t,[f]:v}:t));}
+        function updSpk(tid2,sid,f,v){setTeams(teams.map(t=>t.id!==tid2?t:{...t,speakers:(t.speakers||[]).map(s=>s.id===sid?{...s,[f]:v}:s)}));}
 
-        // ===== CRUD Rooms & Judges =====
-        function addRoom() {
-          setRooms([...rooms, { id: uid(), name: `Sala ${rooms.length + 1}`, location: "", capacity: 50, available: true }]);
-        }
-        function deleteRoom(id) { setRooms(rooms.filter(r => r.id !== id)); }
-        function updateRoom(id, field, value) { setRooms(rooms.map(r => r.id === id ? { ...r, [field]: value } : r)); }
+        // Rooms & Judges
+        function addRoom(){setRooms([...rooms,{id:uid(),name:`Sala ${rooms.length+1}`,location:"",capacity:50,available:true}]);}
+        function delRoom(id){setRooms(rooms.filter(r=>r.id!==id));}
+        function updRoom(id,f,v){setRooms(rooms.map(r=>r.id===id?{...r,[f]:v}:r));}
+        function addJudge(){setJudges([...judges,{id:uid(),name:`Juez ${judges.length+1}`,email:"",type:"principal",institution:"",experience:0,available:true,assignedMatches:[],conflictInstitutions:[]}]);}
+        function delJudge(id){setJudges(judges.filter(j=>j.id!==id));}
+        function updJudge(id,f,v){setJudges(judges.map(j=>j.id===id?{...j,[f]:v}:j));}
 
-        function addJudge() {
-          setJudges([...judges, {
-            id: uid(), name: `Juez ${judges.length + 1}`, email: "",
-            type: "principal", institution: "", experience: 0,
-            available: true, assignedMatches: [], conflictInstitutions: []
-          }]);
-        }
-        function deleteJudge(id) { setJudges(judges.filter(j => j.id !== id)); }
-        function updateJudge(id, field, value) { setJudges(judges.map(j => j.id === id ? { ...j, [field]: value } : j)); }
+        // Excel
+        function xlsxExport(data,sheet,file){const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);XLSX.writeFile(wb,file);}
+        function importExcel(e,cb){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));};r.readAsArrayBuffer(f);e.target.value="";}
 
-        // ===== Excel =====
-        function exportRoomsTemplate() {
-          const ws = XLSX.utils.json_to_sheet([
-            { Nombre: "Sala 1", Ubicación: "Edificio A - Piso 1", Capacidad: 50 },
-            { Nombre: "Sala 2", Ubicación: "Edificio A - Piso 2", Capacidad: 40 }
-          ]);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Salas");
-          XLSX.writeFile(wb, "plantilla_salas.xlsx");
-        }
-        function exportJudgesTemplate() {
-          const ws = XLSX.utils.json_to_sheet([
-            { Nombre: "Juan Pérez", Email: "juan@email.com", Tipo: "principal", Institución: "Univ A", Experiencia: 5 },
-            { Nombre: "María García", Email: "maria@email.com", Tipo: "panelista", Institución: "Univ B", Experiencia: 3 }
-          ]);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Jueces");
-          XLSX.writeFile(wb, "plantilla_jueces.xlsx");
-        }
-        function importRoomsFromExcel(e) {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = ev => {
-            const wb = XLSX.read(new Uint8Array(ev.target.result), { type: "array" });
-            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            const newRooms = json.map((row, idx) => ({
-              id: uid() + idx,
-              name: row["Nombre"] || `Sala ${idx + 1}`,
-              location: row["Ubicación"] || "",
-              capacity: Number(row["Capacidad"] || 50),
-              available: true
-            }));
-            setRooms(prev => [...prev, ...newRooms]);
-            alert(`${newRooms.length} salas importadas`);
-            e.target.value = "";
-          };
-          reader.readAsArrayBuffer(file);
-        }
-        function importJudgesFromExcel(e) {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = ev => {
-            const wb = XLSX.read(new Uint8Array(ev.target.result), { type: "array" });
-            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            const newJudges = json.map((row, idx) => ({
-              id: uid() + idx,
-              name: row["Nombre"] || `Juez ${idx + 1}`,
-              email: row["Email"] || "",
-              type: String(row["Tipo"] || "principal").toLowerCase(),
-              institution: row["Institución"] || "",
-              experience: Number(row["Experiencia"] || 0),
-              available: true, assignedMatches: [], conflictInstitutions: []
-            }));
-            setJudges(prev => [...prev, ...newJudges]);
-            alert(`${newJudges.length} jueces importados`);
-            e.target.value = "";
-          };
-          reader.readAsArrayBuffer(file);
-        }
-
-        // ===== Pairings =====
-        function generatePairings() {
-          if (teams.length < 2) return alert("Necesitas al menos 2 equipos");
-          let newMatches = [];
-          if (config.tournamentSystem === "suizo") newMatches = generateSwissPairings();
-          else if (config.tournamentSystem === "aleatorio") newMatches = generateRandomPairings();
-          else if (config.tournamentSystem === "grupos") newMatches = generateGroupPairings();
-          newMatches = assignRoomsAndJudges(newMatches);
-
-          const newRound = {
-            number: rounds.length + 1,
-            name: `Ronda ${rounds.length + 1}`,
-            matches: newMatches,
-            isClassificatory: rounds.length < Number(config.roundsClasif || 0)
-          };
-          const newRounds = [...rounds, newRound];
-          setRounds(newRounds);
-          setCurrentRound(newRounds.length - 1);
-          setActiveTab("rondas");
-        }
-
-        function generateSwissPairings() {
-          const sorted = getStandings();
-          const matches = [];
-          const paired = new Set();
-          for (let i = 0; i < sorted.length; i++) {
-            if (paired.has(sorted[i].id)) continue;
-            for (let j = i + 1; j < sorted.length; j++) {
-              if (paired.has(sorted[j].id)) continue;
-              const t1 = sorted[i], t2 = sorted[j];
-              if (!config.allowRepeatMatchups && (t1.opponents || []).includes(t2.id)) continue;
-              const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
-              matches.push({
-                id: uid(), aFavor: t1IsFavor ? t1.id : t2.id,
-                enContra: t1IsFavor ? t2.id : t1.id,
-                favorItems: null, contraItems: null,
-                favorVotes: null, contraVotes: null, completed: false
-              });
-              paired.add(t1.id); paired.add(t2.id);
-              break;
-            }
-          }
-          return matches;
-        }
-
-        function generateRandomPairings() {
-          const shuffled = [...teams].sort(() => Math.random() - 0.5);
-          const matches = [];
-          for (let i = 0; i < shuffled.length - 1; i += 2) {
-            const t1 = shuffled[i], t2 = shuffled[i + 1];
-            if (!t1 || !t2) continue;
-            const t1IsFavor = Math.random() > 0.5;
-            matches.push({
-              id: uid(), aFavor: t1IsFavor ? t1.id : t2.id,
-              enContra: t1IsFavor ? t2.id : t1.id,
-              favorItems: null, contraItems: null,
-              favorVotes: null, contraVotes: null, completed: false
-            });
-          }
-          return matches;
-        }
-
-        function createGroups() {
-          const shuffled = [...teams].sort(() => Math.random() - 0.5);
-          const numGroups = Math.max(1, Number(config.numGroups || 1));
-          const newGroups = Array.from({ length: numGroups }, (_, i) => ({
-            id: i + 1, name: `Grupo ${String.fromCharCode(65 + i)}`, teams: []
-          }));
-          shuffled.forEach((team, idx) => {
-            const g = newGroups[idx % numGroups];
-            team.groupId = g.id;
-            g.teams.push(team.id);
-          });
-          setGroups(newGroups);
-          setTeams([...shuffled]);
-        }
-
-        function generateGroupPairings() {
-          if (rounds.length === 0 && groups.length === 0) createGroups();
-          const matches = [];
-          groups.forEach(group => {
-            const gt = teams.filter(t => t.groupId === group.id);
-            for (let i = 0; i < gt.length - 1; i++) {
-              for (let j = i + 1; j < gt.length; j++) {
-                const t1 = gt[i], t2 = gt[j];
-                if ((t1.opponents || []).includes(t2.id)) continue;
-                const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
-                matches.push({
-                  id: uid(), aFavor: t1IsFavor ? t1.id : t2.id,
-                  enContra: t1IsFavor ? t2.id : t1.id,
-                  favorItems: null, contraItems: null,
-                  favorVotes: null, contraVotes: null, completed: false,
-                  groupId: group.id
-                });
-              }
-            }
-          });
-          return matches.slice(0, Math.floor(teams.length / 2));
-        }
-
-        function assignRoomsAndJudges(matches) {
-          const availableRooms = rooms.filter(r => r.available);
-          const principalJudges = judges.filter(j => j.available && j.type === "principal");
-          const panelistJudges = judges.filter(j => j.available && j.type === "panelista");
-          return matches.map((match, idx) => {
-            const favorTeam = teams.find(t => t.id === match.aFavor);
-            const contraTeam = teams.find(t => t.id === match.enContra);
-            const institutions = [favorTeam?.school, contraTeam?.school].filter(Boolean);
-            const hasConflict = j => institutions.includes(j.institution) ||
-              (j.conflictInstitutions || []).some(i => institutions.includes(i));
-
-            const room = availableRooms.length ? availableRooms[idx % availableRooms.length] : null;
-            const assigned = [];
-            const avP = principalJudges.filter(j => !hasConflict(j));
-            const p = avP.length ? avP[idx % avP.length] : principalJudges[idx % principalJudges.length];
-            if (p) assigned.push({ id: p.id, name: p.name, type: "principal", institution: p.institution });
-
-            const avPan = panelistJudges.filter(j => !hasConflict(j) && !assigned.find(a => a.id === j.id));
-            for (let i = 0; i < Math.min(2, avPan.length); i++) {
-              assigned.push({ id: avPan[i].id, name: avPan[i].name, type: "panelista", institution: avPan[i].institution });
-            }
-            return { ...match, room: room ? { id: room.id, name: room.name, location: room.location } : null, judges: assigned };
-          });
-        }
-
-        // ===== Stats & standings =====
-        function recomputeTeamStats(baseTeams, allRounds) {
-          const map = new Map();
-          baseTeams.forEach(t => map.set(t.id, { ...t, points: 0, itemsWon: 0, votesWon: 0, opponents: [], positions: { afavor: 0, enContra: 0 } }));
-          for (const r of allRounds) {
-            for (const m of (r.matches || [])) {
-              if (!m) continue;
-              const A = map.get(m.aFavor), B = map.get(m.enContra);
-              if (!A || !B) continue;
-              A.opponents = [...(A.opponents || []), B.id];
-              B.opponents = [...(B.opponents || []), A.id];
-              A.positions = { ...A.positions, afavor: (A.positions?.afavor || 0) + 1 };
-              B.positions = { ...B.positions, enContra: (B.positions?.enContra || 0) + 1 };
-              if (!m.completed) continue;
-              const aI = Number(m.favorItems), bI = Number(m.contraItems);
-              const aV = m.favorVotes === null || m.favorVotes === "" ? null : Number(m.favorVotes);
-              const bV = m.contraVotes === null || m.contraVotes === "" ? null : Number(m.contraVotes);
-              if (Number.isFinite(aI)) A.itemsWon += aI;
-              if (Number.isFinite(bI)) B.itemsWon += bI;
-              if (Number.isFinite(aV)) A.votesWon += aV;
-              if (Number.isFinite(bV)) B.votesWon += bV;
-              if (aI > bI) { A.points += 3; }
-              else if (bI > aI) { B.points += 3; }
-              else { A.points += 1; B.points += 1; }
-            }
+        // Stats
+        const computed = useMemo(()=>{
+          const ts=normTeams(teams,cfg.speakersPerTeam);
+          const map=new Map();
+          ts.forEach(t=>map.set(t.id,{...t,points:0,itemsWon:0,votesWon:0,opponents:[],positions:{afavor:0,enContra:0}}));
+          for(const r of rounds) for(const m of (r.matches||[])){
+            if(!m)continue;
+            const A=map.get(m.aFavor),B=map.get(m.enContra);
+            if(!A||!B)continue;
+            A.opponents=[...(A.opponents||[]),B.id];B.opponents=[...(B.opponents||[]),A.id];
+            A.positions={...A.positions,afavor:(A.positions?.afavor||0)+1};
+            B.positions={...B.positions,enContra:(B.positions?.enContra||0)+1};
+            if(!m.completed)continue;
+            const aI=Number(m.favorItems),bI=Number(m.contraItems);
+            const aV=m.favorVotes===null||m.favorVotes===""?null:Number(m.favorVotes);
+            const bV=m.contraVotes===null||m.contraVotes===""?null:Number(m.contraVotes);
+            if(Number.isFinite(aI))A.itemsWon+=aI;if(Number.isFinite(bI))B.itemsWon+=bI;
+            if(Number.isFinite(aV))A.votesWon+=aV;if(Number.isFinite(bV))B.votesWon+=bV;
+            if(aI>bI){A.points+=3;}else if(bI>aI){B.points+=3;}else{A.points+=1;B.points+=1;}
           }
           return Array.from(map.values());
-        }
+        },[teams,rounds,cfg.speakersPerTeam]);
 
-        function headToHead(Aid, Bid) {
-          for (const r of rounds) {
-            for (const m of (r.matches || [])) {
-              if (!m.completed) continue;
-              const isAB = (m.aFavor === Aid && m.enContra === Bid) || (m.aFavor === Bid && m.enContra === Aid);
-              if (!isAB) continue;
-              const aI = Number(m.favorItems), bI = Number(m.contraItems);
-              if (!Number.isFinite(aI) || !Number.isFinite(bI)) return 0;
-              if (m.aFavor === Aid) return aI > bI ? +1 : aI < bI ? -1 : 0;
-              else return bI > aI ? +1 : bI < aI ? -1 : 0;
-            }
+        function h2h(Aid,Bid){
+          for(const r of rounds) for(const m of (r.matches||[])){
+            if(!m.completed)continue;
+            const ab=(m.aFavor===Aid&&m.enContra===Bid)||(m.aFavor===Bid&&m.enContra===Aid);
+            if(!ab)continue;
+            const aI=Number(m.favorItems),bI=Number(m.contraItems);
+            if(!Number.isFinite(aI)||!Number.isFinite(bI))return 0;
+            if(m.aFavor===Aid) return aI>bI?1:aI<bI?-1:0;
+            else return bI>aI?1:bI<aI?-1:0;
           }
           return 0;
         }
-
-        function compareTeams(a, b) {
-          if (b.points !== a.points) return b.points - a.points;
-          const parts = String(config.tiebreak || "Ítems > Enfrentamiento directo").split(">").map(p => p.trim());
-          for (const p of parts) {
-            let v = 0;
-            if (p === "Ítems") v = b.itemsWon - a.itemsWon;
-            else if (p === "Votos") v = b.votesWon - a.votesWon;
-            else if (p === "Enfrentamiento directo") v = headToHead(a.id, b.id) * -1;
-            if (v !== 0) return v;
+        function cmp(a,b){
+          if(b.points!==a.points)return b.points-a.points;
+          for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
+            let v=0;
+            if(p==="Ítems")v=b.itemsWon-a.itemsWon;
+            else if(p==="Votos")v=b.votesWon-a.votesWon;
+            else if(p==="Enfrentamiento directo")v=h2h(a.id,b.id)*-1;
+            if(v!==0)return v;
           }
-          return String(a.name || "").localeCompare(String(b.name || ""));
+          return String(a.name||"").localeCompare(String(b.name||""));
         }
+        const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
 
-        const computedTeams = useMemo(() => {
-          const normalized = normalizeTeamsToSpeakersPerTeam(teams, config.speakersPerTeam);
-          return recomputeTeamStats(normalized, rounds);
-        }, [teams, rounds, config.speakersPerTeam, config.tiebreak]);
-
-        function getStandings() {
-          return [...computedTeams].sort(compareTeams);
+        // Pairings
+        function genPairings(){
+          if(teams.length<2)return alert("Necesitas al menos 2 equipos");
+          let ms=[];
+          if(cfg.tournamentSystem==="suizo")ms=genSwiss();
+          else if(cfg.tournamentSystem==="aleatorio")ms=genRandom();
+          else ms=genGroups();
+          ms=assignRJ(ms);
+          const nr={number:rounds.length+1,name:`Ronda ${rounds.length+1}`,matches:ms,isClassificatory:rounds.length<Number(cfg.roundsClasif||0)};
+          const newRounds=[...rounds,nr];
+          setRounds(newRounds);setCurRound(newRounds.length-1);setTab("rondas");
         }
-
-        // ===== Match update =====
-        function updateMatch(roundIdx, matchIdx, patch) {
-          const newRounds = rounds.map((r, ri) => {
-            if (ri !== roundIdx) return r;
-            const matches = (r.matches || []).map((m, mi) => {
-              if (mi !== matchIdx) return m;
-              const next = { ...m, ...patch };
-              const aOk = next.favorItems !== null && next.favorItems !== "" && Number.isFinite(Number(next.favorItems));
-              const bOk = next.contraItems !== null && next.contraItems !== "" && Number.isFinite(Number(next.contraItems));
-              next.completed = aOk && bOk;
-              return next;
-            });
-            return { ...r, matches };
-          });
-          setRounds(newRounds);
-        }
-
-        // ===== Round management =====
-        function deleteRound(roundIdx) {
-          if (!confirm(`¿Eliminar la ${rounds[roundIdx]?.name || `Ronda ${roundIdx + 1}`}? Se borrarán todos sus resultados.`)) return;
-          const newRounds = rounds.filter((_, i) => i !== roundIdx);
-          setRounds(newRounds);
-          setCurrentRound(Math.max(0, Math.min(currentRound, newRounds.length - 1)));
-        }
-
-        function renameRound(roundIdx, newName) {
-          setRounds(rounds.map((r, i) => i === roundIdx ? { ...r, name: newName } : r));
-          setEditingRoundName(null);
-        }
-
-        function regenerateRound(roundIdx) {
-          if (!confirm("¿Regenerar los emparejamientos de esta ronda? Se perderán los resultados actuales.")) return;
-          let newMatches = [];
-          if (config.tournamentSystem === "suizo") newMatches = generateSwissPairings();
-          else if (config.tournamentSystem === "aleatorio") newMatches = generateRandomPairings();
-          else newMatches = generateGroupPairings();
-          newMatches = assignRoomsAndJudges(newMatches);
-          setRounds(rounds.map((r, i) => i === roundIdx ? { ...r, matches: newMatches } : r));
-        }
-
-        function deleteMatch(roundIdx, matchIdx) {
-          if (!confirm("¿Eliminar este enfrentamiento?")) return;
-          setRounds(rounds.map((r, ri) => {
-            if (ri !== roundIdx) return r;
-            return { ...r, matches: (r.matches || []).filter((_, mi) => mi !== matchIdx) };
-          }));
-        }
-
-        // ===== Export =====
-        function exportStandings() {
-          const standings = getStandings();
-          const data = standings.map((t, idx) => ({
-            "Posición": idx + 1, "Equipo": t.name, "Institución": t.school,
-            "Puntos": t.points, "Ítems Ganados": t.itemsWon, "Votos Ganados": t.votesWon,
-            "A favor": t.positions?.afavor || 0, "En contra": t.positions?.enContra || 0,
-            "Oradores": (t.speakers || []).map(s => `${s.name || "-"} (${s.role || "-"})`).join(", ")
-          }));
-          const ws = XLSX.utils.json_to_sheet(data);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Clasificación General");
-          XLSX.writeFile(wb, "clasificacion_general.xlsx");
-        }
-
-        // ===== Speaker ranking =====
-        const speakerList = useMemo(() => {
-          const list = [];
-          for (const t of computedTeams) {
-            for (const s of (t.speakers || [])) {
-              list.push({ speakerId: s.id, name: s.name || "", role: s.role || "", points: Number(s.points || 0), teamId: t.id, teamName: t.name, school: t.school });
+        function genSwiss(){
+          const sorted=[...computed].sort(cmp);const ms=[];const paired=new Set();
+          for(let i=0;i<sorted.length;i++){
+            if(paired.has(sorted[i].id))continue;
+            for(let j=i+1;j<sorted.length;j++){
+              if(paired.has(sorted[j].id))continue;
+              const t1=sorted[i],t2=sorted[j];
+              if(!cfg.allowRepeatMatchups&&(t1.opponents||[]).includes(t2.id))continue;
+              const f=(t1.positions?.afavor||0)<=(t1.positions?.enContra||0);
+              ms.push({id:uid(),aFavor:f?t1.id:t2.id,enContra:f?t2.id:t1.id,favorItems:null,contraItems:null,favorVotes:null,contraVotes:null,completed:false});
+              paired.add(t1.id);paired.add(t2.id);break;
             }
           }
-          return list;
-        }, [computedTeams]);
-
-        function getSpeakerRanking(roleFilter = "TODOS") {
-          const filtered = roleFilter === "TODOS" ? speakerList : speakerList.filter(s => s.role === roleFilter);
-          return filtered.filter(s => s.name.trim().length > 0).sort((a, b) => b.points !== a.points ? b.points - a.points : a.name.localeCompare(b.name));
+          return ms;
+        }
+        function genRandom(){
+          const sh=[...teams].sort(()=>Math.random()-.5);const ms=[];
+          for(let i=0;i<sh.length-1;i+=2){const t1=sh[i],t2=sh[i+1];if(!t1||!t2)continue;const f=Math.random()>.5;ms.push({id:uid(),aFavor:f?t1.id:t2.id,enContra:f?t2.id:t1.id,favorItems:null,contraItems:null,favorVotes:null,contraVotes:null,completed:false});}
+          return ms;
+        }
+        function genGroups(){
+          if(rounds.length===0&&groups.length===0){
+            const sh=[...teams].sort(()=>Math.random()-.5);
+            const n=Math.max(1,Number(cfg.numGroups||1));
+            const ng=Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[]}));
+            sh.forEach((t,idx)=>{const g=ng[idx%n];t.groupId=g.id;g.teams.push(t.id);});
+            setGroups(ng);setTeams([...sh]);
+          }
+          const ms=[];
+          groups.forEach(g=>{
+            const gt=teams.filter(t=>t.groupId===g.id);
+            for(let i=0;i<gt.length-1;i++)for(let j=i+1;j<gt.length;j++){
+              const t1=gt[i],t2=gt[j];
+              if((t1.opponents||[]).includes(t2.id))continue;
+              const f=(t1.positions?.afavor||0)<=(t1.positions?.enContra||0);
+              ms.push({id:uid(),aFavor:f?t1.id:t2.id,enContra:f?t2.id:t1.id,favorItems:null,contraItems:null,favorVotes:null,contraVotes:null,completed:false,groupId:g.id});
+            }
+          });
+          return ms.slice(0,Math.floor(teams.length/2));
+        }
+        function assignRJ(ms){
+          const aR=rooms.filter(r=>r.available);
+          const pJ=judges.filter(j=>j.available&&j.type==="principal");
+          const panJ=judges.filter(j=>j.available&&j.type==="panelista");
+          return ms.map((m,idx)=>{
+            const fT=teams.find(t=>t.id===m.aFavor),cT=teams.find(t=>t.id===m.enContra);
+            const ins=[fT?.school,cT?.school].filter(Boolean);
+            const cf=j=>ins.includes(j.institution)||(j.conflictInstitutions||[]).some(i=>ins.includes(i));
+            const room=aR.length?aR[idx%aR.length]:null;
+            const asgn=[];
+            const avP=pJ.filter(j=>!cf(j));
+            const p=avP.length?avP[idx%avP.length]:pJ[idx%pJ.length];
+            if(p)asgn.push({id:p.id,name:p.name,type:"principal",institution:p.institution});
+            const avPan=panJ.filter(j=>!cf(j)&&!asgn.find(a=>a.id===j.id));
+            for(let i=0;i<Math.min(2,avPan.length);i++)asgn.push({id:avPan[i].id,name:avPan[i].name,type:"panelista",institution:avPan[i].institution});
+            return{...m,room:room?{id:room.id,name:room.name,location:room.location}:null,judges:asgn};
+          });
         }
 
-        // ===== UI helpers =====
-        function TabButton({ id, children }) {
-          return (
-            <button
-              className={"tab " + (activeTab === id ? "active" : "")}
-              onClick={() => setActiveTab(id)}
-              disabled={!isAuthenticated || (!hasTournament && id !== "torneos")}
-              title={!hasTournament && id !== "torneos" ? "Crea o carga un torneo primero" : ""}
-            >{children}</button>
-          );
+        function updMatch(ri,mi,patch){
+          setRounds(rounds.map((r,rIdx)=>{
+            if(rIdx!==ri)return r;
+            return{...r,matches:(r.matches||[]).map((m,mIdx)=>{
+              if(mIdx!==mi)return m;
+              const n={...m,...patch};
+              n.completed=n.favorItems!==null&&n.favorItems!==""&&Number.isFinite(Number(n.favorItems))&&n.contraItems!==null&&n.contraItems!==""&&Number.isFinite(Number(n.contraItems));
+              return n;
+            })};
+          }));
         }
 
-        // ===== Auth screen =====
-        if (!isAuthenticated) {
-          if (hasAnyUser === null) return <div className="card"><div className="muted">Cargando…</div></div>;
-          const forceRegister = !hasAnyUser;
-          return (
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>{forceRegister ? "Crear primera cuenta" : "Acceso"}</h2>
-              {!forceRegister && (
-                <div className="tabs" style={{ marginBottom: 12 }}>
-                  <button className={"tab " + (!isRegistering ? "active" : "")} onClick={() => setIsRegistering(false)}>Login</button>
-                  <button className={"tab " + (isRegistering ? "active" : "")} onClick={() => setIsRegistering(true)}>Registro</button>
-                </div>
-              )}
-              {(forceRegister || isRegistering) ? (
-                <div className="row cols2">
-                  <div><label>Nombre</label><input value={registerForm.name} onChange={e => setRegisterForm({ ...registerForm, name: e.target.value })} /></div>
-                  <div><label>Email</label><input value={registerForm.email} onChange={e => setRegisterForm({ ...registerForm, email: e.target.value })} /></div>
-                  <div><label>Contraseña</label><input type="password" value={registerForm.password} onChange={e => setRegisterForm({ ...registerForm, password: e.target.value })} /></div>
-                  <div><label>Confirmar contraseña</label><input type="password" value={registerForm.confirmPassword} onChange={e => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} /></div>
-                  <div className="toolbar" style={{ gridColumn: "1 / -1" }}>
-                    <button className="primary" onClick={handleRegister}>{forceRegister ? "Crear primera cuenta" : "Crear cuenta"}</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="row cols2">
-                  <div><label>Email</label><input value={loginForm.email} onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} /></div>
-                  <div><label>Contraseña</label><input type="password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} /></div>
-                  <div className="toolbar" style={{ gridColumn: "1 / -1" }}>
-                    <button className="primary" onClick={handleLogin}>Entrar</button>
-                  </div>
-                </div>
-              )}
-              <div className="hr"></div>
-              <p className="muted small">Los datos se guardan de forma persistente y estarán disponibles desde cualquier dispositivo cuando inicies sesión.</p>
-              <p className="muted small" style={{ marginBottom: 0 }}><b>Un proyecto de {window.COMPANY_NAME || "Learn By Talking Formación"}</b></p>
+        // Round management
+        function deleteRound(idx){
+          if(!confirm(`¿Eliminar "${rounds[idx]?.name}"?`))return;
+          const nr=rounds.filter((_,i)=>i!==idx);
+          setRounds(nr);setCurRound(Math.max(0,Math.min(curRound,nr.length-1)));
+        }
+        function renameRound(idx,name){setRounds(rounds.map((r,i)=>i===idx?{...r,name}:r));setEditRnd(null);}
+        function regenRound(idx){
+          if(!confirm("¿Regenerar emparejamientos? Se perderán los resultados."))return;
+          let ms=[];
+          if(cfg.tournamentSystem==="suizo")ms=genSwiss();
+          else if(cfg.tournamentSystem==="aleatorio")ms=genRandom();
+          else ms=genGroups();
+          setRounds(rounds.map((r,i)=>i===idx?{...r,matches:assignRJ(ms)}:r));
+        }
+        function deleteMatch(ri,mi){
+          if(!confirm("¿Eliminar este enfrentamiento?"))return;
+          setRounds(rounds.map((r,rIdx)=>rIdx!==ri?r:{...r,matches:(r.matches||[]).filter((_,mIdx)=>mIdx!==mi)}));
+        }
+
+        function exportStandings(){
+          xlsxExport(standings.map((t,i)=>({"Posición":i+1,"Equipo":t.name,"Institución":t.school,"Puntos":t.points,"Ítems":t.itemsWon,"Votos":t.votesWon,"A favor":t.positions?.afavor||0,"En contra":t.positions?.enContra||0,"Oradores":(t.speakers||[]).map(s=>`${s.name||"-"} (${s.role||"-"})`).join(", ")})),"Clasificación","clasificacion.xlsx");
+        }
+
+        function Tab({id,children}){
+          return <button className={"tab "+(tab===id?"active":"")} onClick={()=>setTab(id)} disabled={!auth||(!hasTournament&&id!=="torneos")} title={!hasTournament&&id!=="torneos"?"Crea o carga un torneo primero":""}>{children}</button>;
+        }
+
+        // Auth screen
+        if(!auth) return (
+          <div className="card">
+            <h2 style={{marginTop:0}}>Acceso</h2>
+            <div className="tabs" style={{marginBottom:14}}>
+              <button className={"tab "+(!isReg?"active":"")} onClick={()=>{setIsReg(false);setAuthErr("");}}>Iniciar sesión</button>
+              <button className={"tab "+(isReg?"active":"")} onClick={()=>{setIsReg(true);setAuthErr("");}}>Crear cuenta</button>
             </div>
-          );
-        }
+            {authErr&&<div className="error-box">⚠️ {authErr}</div>}
+            {isReg?(
+              <div className="row cols2">
+                <div><label>Nombre</label><input value={regF.name} onChange={e=>setRegF({...regF,name:e.target.value})}/></div>
+                <div><label>Email</label><input type="email" value={regF.email} onChange={e=>setRegF({...regF,email:e.target.value})}/></div>
+                <div><label>Contraseña</label><input type="password" value={regF.password} onChange={e=>setRegF({...regF,password:e.target.value})}/></div>
+                <div><label>Confirmar contraseña</label><input type="password" value={regF.confirm} onChange={e=>setRegF({...regF,confirm:e.target.value})}/></div>
+                <div style={{gridColumn:"1/-1"}}><button className="primary" onClick={register} disabled={authLoad}>{authLoad?"Creando…":"Crear cuenta"}</button></div>
+              </div>
+            ):(
+              <div className="row cols2">
+                <div><label>Email</label><input type="email" value={loginF.email} onChange={e=>setLoginF({...loginF,email:e.target.value})} onKeyDown={e=>e.key==="Enter"&&login()}/></div>
+                <div><label>Contraseña</label><input type="password" value={loginF.password} onChange={e=>setLoginF({...loginF,password:e.target.value})} onKeyDown={e=>e.key==="Enter"&&login()}/></div>
+                <div style={{gridColumn:"1/-1"}}><button className="primary" onClick={login} disabled={authLoad}>{authLoad?"Entrando…":"Entrar"}</button></div>
+              </div>
+            )}
+            <div className="hr"></div>
+            <p className="muted small">☁️ Los datos se guardan en Supabase y son accesibles desde cualquier dispositivo con tu cuenta.</p>
+            <p className="muted small" style={{marginBottom:0}}><b>Un proyecto de {window.COMPANY_NAME||"Learn By Talking Formación"}</b></p>
+          </div>
+        );
 
-        // ===== Main app =====
+        // Main app
         return (
-          <div className="row" style={{ gap: 12 }}>
-            {/* TABS */}
-            <div className="card" style={{ padding: "12px 14px" }}>
-              <div className="toolbar" style={{ justifyContent: "space-between" }}>
+          <div className="row" style={{gap:12}}>
+            <div className="card" style={{padding:"12px 14px"}}>
+              <div className="toolbar" style={{justifyContent:"space-between"}}>
                 <div className="tabs">
-                  <TabButton id="torneos">🏆 Torneos</TabButton>
-                  <TabButton id="config">⚙️ Config</TabButton>
-                  <TabButton id="equipos">👥 Equipos</TabButton>
-                  <TabButton id="salas">🏫 Salas</TabButton>
-                  <TabButton id="jueces">🧑‍⚖️ Jueces</TabButton>
-                  <TabButton id="rondas">🧾 Rondas</TabButton>
-                  <TabButton id="ranking">📊 Ranking</TabButton>
+                  <Tab id="torneos">🏆 Torneos</Tab>
+                  <Tab id="config">⚙️ Config</Tab>
+                  <Tab id="equipos">👥 Equipos</Tab>
+                  <Tab id="salas">🏫 Salas</Tab>
+                  <Tab id="jueces">🧑‍⚖️ Jueces</Tab>
+                  <Tab id="rondas">🧾 Rondas</Tab>
+                  <Tab id="ranking">📊 Ranking</Tab>
                 </div>
-                <button className="primary sm" onClick={createNewTournament}>➕ Nuevo torneo</button>
+                <button className="primary sm" onClick={newTournament}>➕ Nuevo torneo</button>
               </div>
             </div>
 
-            {/* TOAST */}
-            {toast && (
+            {toast&&(
               <div className="toast">
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{toast.title}</div>
-                    <div className="muted small">{toast.message}</div>
-                  </div>
-                  <button className="primary sm" onClick={() => setToast(null)}>✕</button>
+                <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start",flexWrap:"wrap"}}>
+                  <div><div style={{fontWeight:700,marginBottom:4}}>{toast.title}</div><div className="muted small">{toast.msg}</div></div>
+                  <button className="primary sm" onClick={()=>setToast(null)}>✕</button>
                 </div>
               </div>
             )}
 
-            {/* ===== TORNEOS ===== */}
-            {activeTab === "torneos" && (
+            {/* TORNEOS */}
+            {tab==="torneos"&&(
               <div className="card">
-                <h2 style={{ marginTop: 0 }}>Tus torneos</h2>
-                <div className="muted small">Se guardan de forma persistente y son accesibles desde cualquier dispositivo.</div>
-                <div className="spacer"></div>
-                {tournaments.length === 0 ? (
-                  <div className="muted">No hay torneos todavía. Pulsa "Nuevo torneo".</div>
-                ) : (
+                <h2 style={{marginTop:0}}>Tus torneos</h2>
+                <div className="muted small" style={{marginBottom:12}}>☁️ Guardados en Supabase — accesibles desde cualquier dispositivo.</div>
+                {tournaments.length===0?<div className="muted">No hay torneos. Pulsa "Nuevo torneo".</div>:(
                   <div className="table-wrap">
                     <table>
-                      <thead>
-                        <tr>
-                          <th>Nombre</th>
-                          <th className="nowrap">Última edición</th>
-                          <th className="right">Acciones</th>
-                        </tr>
-                      </thead>
+                      <thead><tr><th>Nombre</th><th>Última edición</th><th className="right">Acciones</th></tr></thead>
                       <tbody>
-                        {tournaments.slice().sort((a, b) => (b.lastModified || "").localeCompare(a.lastModified || "")).map(t => (
-                          <tr key={t.id}>
-                            <td className="wrap">
-                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                <b>{t.name}</b>
-                                {currentTournamentId === t.id && <span className="pill blue">abierto</span>}
-                              </div>
-                              <div className="muted small">Equipos: {t.teams?.length || 0} · Rondas: {t.rounds?.length || 0}</div>
-                            </td>
-                            <td className="nowrap muted small">{t.lastModified ? new Date(t.lastModified).toLocaleString() : "-"}</td>
-                            <td className="right nowrap" style={{ whiteSpace: "nowrap" }}>
-                              <button className="primary sm" onClick={() => loadTournament(t)}>Abrir</button>{" "}
-                              <button className="danger sm" onClick={() => deleteTournament(t.id)}>🗑️</button>
-                            </td>
-                          </tr>
-                        ))}
+                        {tournaments.map(t=>{
+                          const d=typeof t.data==="string"?JSON.parse(t.data):(t.data||{});
+                          return(
+                            <tr key={t.id}>
+                              <td className="wrap">
+                                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                                  <b>{t.name}</b>{tid===t.id&&<span className="pill blue">abierto</span>}
+                                </div>
+                                <div className="muted small">Equipos: {d.teams?.length||0} · Rondas: {d.rounds?.length||0}</div>
+                              </td>
+                              <td className="nowrap muted small">{t.last_modified?new Date(t.last_modified).toLocaleString():"-"}</td>
+                              <td className="right nowrap">
+                                <button className="primary sm" onClick={()=>openTournament(t)}>Abrir</button>{" "}
+                                <button className="danger sm" onClick={()=>deleteTournament(t.id)}>🗑️</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1186,364 +580,236 @@
               </div>
             )}
 
-            {/* ===== CONFIG ===== */}
-            {activeTab === "config" && (
+            {/* CONFIG */}
+            {tab==="config"&&(
               <div className="card">
-                <h2 style={{ marginTop: 0 }}>Configuración</h2>
+                <h2 style={{marginTop:0}}>Configuración</h2>
                 <div className="row cols3">
-                  <div>
-                    <label>Nombre del torneo</label>
-                    <input value={config.tournamentName} onChange={e => setConfig({ ...config, tournamentName: e.target.value })} />
-                  </div>
-                  <div>
-                    <label>Sistema</label>
-                    <select value={config.tournamentSystem} onChange={e => setConfig({ ...config, tournamentSystem: e.target.value })}>
-                      <option value="suizo">Suizo</option>
-                      <option value="aleatorio">Aleatorio</option>
-                      <option value="grupos">Grupos</option>
+                  <div><label>Nombre del torneo</label><input value={cfg.tournamentName} onChange={e=>setCfg({...cfg,tournamentName:e.target.value})}/></div>
+                  <div><label>Sistema</label>
+                    <select value={cfg.tournamentSystem} onChange={e=>setCfg({...cfg,tournamentSystem:e.target.value})}>
+                      <option value="suizo">Suizo</option><option value="aleatorio">Aleatorio</option><option value="grupos">Grupos</option>
                     </select>
                   </div>
-                  <div>
-                    <label>Repetición de enfrentamientos</label>
-                    <select value={String(config.allowRepeatMatchups)} onChange={e => setConfig({ ...config, allowRepeatMatchups: e.target.value === "true" })}>
-                      <option value="false">No</option>
-                      <option value="true">Sí</option>
+                  <div><label>Permitir repetición</label>
+                    <select value={String(cfg.allowRepeatMatchups)} onChange={e=>setCfg({...cfg,allowRepeatMatchups:e.target.value==="true"})}>
+                      <option value="false">No</option><option value="true">Sí</option>
                     </select>
                   </div>
-                  <div>
-                    <label>Nº oradores por equipo (2–5)</label>
-                    <select value={String(config.speakersPerTeam)} onChange={e => {
-                      const v = Math.max(2, Math.min(5, Number(e.target.value)));
-                      setConfig({ ...config, speakersPerTeam: v });
-                      setTeams(prev => normalizeTeamsToSpeakersPerTeam(prev, v));
-                    }}>
-                      {[2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                  <div><label>Nº oradores por equipo (2–5)</label>
+                    <select value={String(cfg.speakersPerTeam)} onChange={e=>{const v=Math.max(2,Math.min(5,Number(e.target.value)));setCfg({...cfg,speakersPerTeam:v});setTeams(prev=>normTeams(prev,v));}}>
+                      {[2,3,4,5].map(n=><option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
-                  <div style={{ gridColumn: "span 2" }}>
-                    <label>Criterio de desempate</label>
-                    <select value={config.tiebreak} onChange={e => setConfig({ ...config, tiebreak: e.target.value })}>
-                      {TIEBREAK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  <div style={{gridColumn:"span 2"}}><label>Criterio de desempate</label>
+                    <select value={cfg.tiebreak} onChange={e=>setCfg({...cfg,tiebreak:e.target.value})}>
+                      {TIEBREAKS.map(o=><option key={o} value={o}>{o}</option>)}
                     </select>
-                    <div className="muted small" style={{ marginTop: 5 }}>
-                      "Enfrentamiento directo" requiere debate previo entre los equipos empatados. "Votos" se toman de los registrados en rondas.
-                    </div>
                   </div>
-                  {config.tournamentSystem === "grupos" && (
-                    <>
-                      <div><label>Nº de grupos</label><input type="number" value={config.numGroups} onChange={e => setConfig({ ...config, numGroups: Number(e.target.value) })} /></div>
-                      <div><label>Tamaño grupo (info)</label><input type="number" value={config.groupSize} onChange={e => setConfig({ ...config, groupSize: Number(e.target.value) })} /></div>
-                    </>
-                  )}
+                  {cfg.tournamentSystem==="grupos"&&<>
+                    <div><label>Nº de grupos</label><input type="number" value={cfg.numGroups} onChange={e=>setCfg({...cfg,numGroups:Number(e.target.value)})}/></div>
+                    <div><label>Tamaño grupo</label><input type="number" value={cfg.groupSize} onChange={e=>setCfg({...cfg,groupSize:Number(e.target.value)})}/></div>
+                  </>}
                 </div>
                 <div className="hr"></div>
-                <div className="toolbar" style={{ justifyContent: "flex-end" }}>
-                  <button className="primary" onClick={generatePairings} disabled={computedTeams.length < 2}>
-                    🧩 Generar emparejamientos (nueva ronda)
-                  </button>
+                <div className="toolbar" style={{justifyContent:"flex-end"}}>
+                  <button className="primary" onClick={genPairings} disabled={computed.length<2}>🧩 Generar emparejamientos (nueva ronda)</button>
                 </div>
               </div>
             )}
 
-            {/* ===== EQUIPOS ===== */}
-            {activeTab === "equipos" && (
+            {/* EQUIPOS */}
+            {tab==="equipos"&&(
               <div className="card">
-                <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                  <h2 style={{ margin: 0 }}>Equipos</h2>
+                <div className="toolbar" style={{justifyContent:"space-between"}}>
+                  <h2 style={{margin:0}}>Equipos</h2>
                   <button className="primary" onClick={addTeam}>➕ Añadir equipo</button>
                 </div>
                 <div className="spacer"></div>
-                {teams.length === 0 ? (
-                  <div className="muted">No hay equipos todavía.</div>
-                ) : (
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Equipo</th>
-                          <th>Institución</th>
-                          <th>Oradores</th>
-                          <th className="right">Acc.</th>
+                {teams.length===0?<div className="muted">No hay equipos.</div>:(
+                  <div className="table-wrap"><table>
+                    <thead><tr><th>Equipo</th><th>Institución</th><th>Oradores</th><th className="right">Acc.</th></tr></thead>
+                    <tbody>
+                      {normTeams(teams,cfg.speakersPerTeam).map(t=>(
+                        <tr key={t.id}>
+                          <td style={{minWidth:130}}><input value={t.name} onChange={e=>updTeam(t.id,"name",e.target.value)}/></td>
+                          <td style={{minWidth:130}}><input value={t.school} onChange={e=>updTeam(t.id,"school",e.target.value)}/></td>
+                          <td style={{minWidth:340}}>
+                            <div className="stack">
+                              {(t.speakers||[]).map((s,i)=>(
+                                <div className="speakerRow" key={s.id}>
+                                  <input placeholder={`Orador ${i+1}`} value={s.name||""} onChange={e=>updSpk(t.id,s.id,"name",e.target.value)}/>
+                                  <select value={s.role||"Libre"} onChange={e=>updSpk(t.id,s.id,"role",e.target.value)}>{ROLES.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select>
+                                  <input type="number" placeholder="Puntos" value={String(s.points??0)} onChange={e=>updSpk(t.id,s.id,"points",Number(e.target.value))}/>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="right"><button className="danger sm" onClick={()=>delTeam(t.id)}>🗑️</button></td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {normalizeTeamsToSpeakersPerTeam(teams, config.speakersPerTeam).map(t => (
-                          <tr key={t.id}>
-                            <td style={{ minWidth: 140 }}><input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} /></td>
-                            <td style={{ minWidth: 140 }}><input value={t.school} onChange={e => updateTeam(t.id, "school", e.target.value)} /></td>
-                            <td style={{ minWidth: 360 }}>
-                              <div className="stack">
-                                {(t.speakers || []).map((s, idx) => (
-                                  <div className="speakerRow" key={s.id}>
-                                    <input placeholder={`Orador ${idx + 1}`} value={s.name || ""} onChange={e => updateSpeaker(t.id, s.id, "name", e.target.value)} />
-                                    <select value={s.role || "Libre"} onChange={e => updateSpeaker(t.id, s.id, "role", e.target.value)}>
-                                      {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                                    </select>
-                                    <input type="number" placeholder="Puntos" value={String(s.points ?? 0)} onChange={e => updateSpeaker(t.id, s.id, "points", Number(e.target.value))} />
-                                  </div>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="right"><button className="danger sm" onClick={() => deleteTeam(t.id)}>🗑️</button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table></div>
                 )}
               </div>
             )}
 
-            {/* ===== SALAS ===== */}
-            {activeTab === "salas" && (
+            {/* SALAS */}
+            {tab==="salas"&&(
               <div className="card">
-                <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                  <h2 style={{ margin: 0 }}>Salas</h2>
+                <div className="toolbar" style={{justifyContent:"space-between"}}>
+                  <h2 style={{margin:0}}>Salas</h2>
                   <div className="toolbar">
-                    <button onClick={exportRoomsTemplate}>⬇️ Plantilla</button>
-                    <label className="tab" style={{ cursor: "pointer" }}>
-                      ⬆️ Importar
-                      <input type="file" accept=".xlsx,.xls" onChange={importRoomsFromExcel} style={{ display: "none" }} />
-                    </label>
+                    <button onClick={()=>xlsxExport([{Nombre:"Sala 1",Ubicación:"Edificio A",Capacidad:50}],"Salas","plantilla_salas.xlsx")}>⬇️ Plantilla</button>
+                    <label className="tab" style={{cursor:"pointer"}}>⬆️ Importar<input type="file" accept=".xlsx,.xls" onChange={e=>importExcel(e,json=>setRooms(prev=>[...prev,...json.map((r,i)=>({id:uid()+i,name:r["Nombre"]||`Sala ${i+1}`,location:r["Ubicación"]||"",capacity:Number(r["Capacidad"]||50),available:true}))]))} style={{display:"none"}}/></label>
                     <button className="primary" onClick={addRoom}>➕ Añadir</button>
                   </div>
                 </div>
                 <div className="spacer"></div>
-                {rooms.length === 0 ? <div className="muted">No hay salas.</div> : (
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr><th>Nombre</th><th>Ubicación</th><th>Capacidad</th><th>Disponible</th><th className="right">Acc.</th></tr>
-                      </thead>
-                      <tbody>
-                        {rooms.map(r => (
-                          <tr key={r.id}>
-                            <td><input value={r.name} onChange={e => updateRoom(r.id, "name", e.target.value)} /></td>
-                            <td><input value={r.location} onChange={e => updateRoom(r.id, "location", e.target.value)} /></td>
-                            <td style={{ width: 130 }}><input type="number" value={r.capacity} onChange={e => updateRoom(r.id, "capacity", Number(e.target.value))} /></td>
-                            <td style={{ width: 130 }}>
-                              <select value={String(r.available)} onChange={e => updateRoom(r.id, "available", e.target.value === "true")}>
-                                <option value="true">Sí</option><option value="false">No</option>
-                              </select>
-                            </td>
-                            <td className="right"><button className="danger sm" onClick={() => deleteRoom(r.id)}>🗑️</button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                {rooms.length===0?<div className="muted">No hay salas.</div>:(
+                  <div className="table-wrap"><table>
+                    <thead><tr><th>Nombre</th><th>Ubicación</th><th>Capacidad</th><th>Disponible</th><th className="right">Acc.</th></tr></thead>
+                    <tbody>{rooms.map(r=>(
+                      <tr key={r.id}>
+                        <td><input value={r.name} onChange={e=>updRoom(r.id,"name",e.target.value)}/></td>
+                        <td><input value={r.location} onChange={e=>updRoom(r.id,"location",e.target.value)}/></td>
+                        <td style={{width:120}}><input type="number" value={r.capacity} onChange={e=>updRoom(r.id,"capacity",Number(e.target.value))}/></td>
+                        <td style={{width:110}}><select value={String(r.available)} onChange={e=>updRoom(r.id,"available",e.target.value==="true")}><option value="true">Sí</option><option value="false">No</option></select></td>
+                        <td className="right"><button className="danger sm" onClick={()=>delRoom(r.id)}>🗑️</button></td>
+                      </tr>
+                    ))}</tbody>
+                  </table></div>
                 )}
               </div>
             )}
 
-            {/* ===== JUECES ===== */}
-            {activeTab === "jueces" && (
+            {/* JUECES */}
+            {tab==="jueces"&&(
               <div className="card">
-                <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                  <h2 style={{ margin: 0 }}>Jueces</h2>
+                <div className="toolbar" style={{justifyContent:"space-between"}}>
+                  <h2 style={{margin:0}}>Jueces</h2>
                   <div className="toolbar">
-                    <button onClick={exportJudgesTemplate}>⬇️ Plantilla</button>
-                    <label className="tab" style={{ cursor: "pointer" }}>
-                      ⬆️ Importar
-                      <input type="file" accept=".xlsx,.xls" onChange={importJudgesFromExcel} style={{ display: "none" }} />
-                    </label>
+                    <button onClick={()=>xlsxExport([{Nombre:"Juan Pérez",Email:"juan@email.com",Tipo:"principal",Institución:"Univ A",Experiencia:5}],"Jueces","plantilla_jueces.xlsx")}>⬇️ Plantilla</button>
+                    <label className="tab" style={{cursor:"pointer"}}>⬆️ Importar<input type="file" accept=".xlsx,.xls" onChange={e=>importExcel(e,json=>setJudges(prev=>[...prev,...json.map((r,i)=>({id:uid()+i,name:r["Nombre"]||`Juez ${i+1}`,email:r["Email"]||"",type:String(r["Tipo"]||"principal").toLowerCase(),institution:r["Institución"]||"",experience:Number(r["Experiencia"]||0),available:true,assignedMatches:[],conflictInstitutions:[]}))]))} style={{display:"none"}}/></label>
                     <button className="primary" onClick={addJudge}>➕ Añadir</button>
                   </div>
                 </div>
                 <div className="spacer"></div>
-                {judges.length === 0 ? <div className="muted">No hay jueces.</div> : (
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr><th>Nombre</th><th>Email</th><th>Tipo</th><th>Institución</th><th>Disponible</th><th className="right">Acc.</th></tr>
-                      </thead>
-                      <tbody>
-                        {judges.map(j => (
-                          <tr key={j.id}>
-                            <td><input value={j.name} onChange={e => updateJudge(j.id, "name", e.target.value)} /></td>
-                            <td><input value={j.email} onChange={e => updateJudge(j.id, "email", e.target.value)} /></td>
-                            <td style={{ width: 150 }}>
-                              <select value={j.type} onChange={e => updateJudge(j.id, "type", e.target.value)}>
-                                <option value="principal">principal</option>
-                                <option value="panelista">panelista</option>
-                              </select>
-                            </td>
-                            <td><input value={j.institution} onChange={e => updateJudge(j.id, "institution", e.target.value)} /></td>
-                            <td style={{ width: 130 }}>
-                              <select value={String(j.available)} onChange={e => updateJudge(j.id, "available", e.target.value === "true")}>
-                                <option value="true">Sí</option><option value="false">No</option>
-                              </select>
-                            </td>
-                            <td className="right"><button className="danger sm" onClick={() => deleteJudge(j.id)}>🗑️</button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                {judges.length===0?<div className="muted">No hay jueces.</div>:(
+                  <div className="table-wrap"><table>
+                    <thead><tr><th>Nombre</th><th>Email</th><th>Tipo</th><th>Institución</th><th>Disponible</th><th className="right">Acc.</th></tr></thead>
+                    <tbody>{judges.map(j=>(
+                      <tr key={j.id}>
+                        <td><input value={j.name} onChange={e=>updJudge(j.id,"name",e.target.value)}/></td>
+                        <td><input value={j.email} onChange={e=>updJudge(j.id,"email",e.target.value)}/></td>
+                        <td style={{width:130}}><select value={j.type} onChange={e=>updJudge(j.id,"type",e.target.value)}><option value="principal">principal</option><option value="panelista">panelista</option></select></td>
+                        <td><input value={j.institution} onChange={e=>updJudge(j.id,"institution",e.target.value)}/></td>
+                        <td style={{width:110}}><select value={String(j.available)} onChange={e=>updJudge(j.id,"available",e.target.value==="true")}><option value="true">Sí</option><option value="false">No</option></select></td>
+                        <td className="right"><button className="danger sm" onClick={()=>delJudge(j.id)}>🗑️</button></td>
+                      </tr>
+                    ))}</tbody>
+                  </table></div>
                 )}
               </div>
             )}
 
-            {/* ===== RONDAS ===== */}
-            {activeTab === "rondas" && (
+            {/* RONDAS */}
+            {tab==="rondas"&&(
               <div className="card">
-                <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                  <h2 style={{ margin: 0 }}>Rondas</h2>
+                <div className="toolbar" style={{justifyContent:"space-between"}}>
+                  <h2 style={{margin:0}}>Rondas</h2>
                   <div className="toolbar">
-                    <button className="primary" onClick={generatePairings} disabled={computedTeams.length < 2}>➕ Nueva ronda</button>
+                    <button className="primary" onClick={genPairings} disabled={computed.length<2}>➕ Nueva ronda</button>
                     <span className="muted small">Total: {rounds.length}</span>
                   </div>
                 </div>
-
                 <div className="spacer"></div>
-
-                {rounds.length === 0 ? (
-                  <div className="muted">No hay rondas. Genera una desde ⚙️ Config o pulsa "Nueva ronda".</div>
-                ) : (
+                {rounds.length===0?<div className="muted">No hay rondas. Pulsa "Nueva ronda".</div>:(
                   <>
-                    {/* Lista de rondas con edición/borrado */}
-                    <div style={{ marginBottom: 12 }}>
-                      <label style={{ marginBottom: 8 }}>Seleccionar ronda</label>
-                      <div className="stack">
-                        {rounds.map((r, idx) => {
-                          const completed = (r.matches || []).filter(m => m.completed).length;
-                          const total = (r.matches || []).length;
-                          const isActive = currentRound === idx;
-                          return (
-                            <div key={r.number + "-" + idx} className={"round-header " + (isActive ? "active" : "")} onClick={() => setCurrentRound(idx)}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
-                                {editingRoundName === idx ? (
-                                  <input
-                                    autoFocus
-                                    value={roundNameTemp}
-                                    style={{ width: 160, padding: "4px 8px", fontSize: 13, borderRadius: 8 }}
-                                    onClick={e => e.stopPropagation()}
-                                    onChange={e => setRoundNameTemp(e.target.value)}
-                                    onKeyDown={e => {
-                                      if (e.key === "Enter") renameRound(idx, roundNameTemp);
-                                      if (e.key === "Escape") setEditingRoundName(null);
-                                    }}
-                                  />
-                                ) : (
-                                  <b>{r.name || `Ronda ${r.number}`}</b>
-                                )}
-                                <span className={"pill " + (completed === total && total > 0 ? "green" : completed > 0 ? "orange" : "")} >
-                                  {completed}/{total} completados
-                                </span>
-                                {r.isClassificatory && <span className="pill">Clasificatoria</span>}
-                              </div>
-                              <div className="toolbar" onClick={e => e.stopPropagation()}>
-                                {editingRoundName === idx ? (
-                                  <>
-                                    <button className="primary sm" onClick={() => renameRound(idx, roundNameTemp)}>✓ Guardar</button>
-                                    <button className="sm" onClick={() => setEditingRoundName(null)}>✕</button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button className="sm" title="Renombrar" onClick={() => { setEditingRoundName(idx); setRoundNameTemp(r.name || `Ronda ${r.number}`); }}>✏️</button>
-                                    <button className="sm" title="Regenerar emparejamientos" onClick={() => regenerateRound(idx)}>🔄</button>
-                                    <button className="danger sm" title="Eliminar ronda" onClick={() => deleteRound(idx)}>🗑️ Borrar</button>
-                                  </>
-                                )}
-                              </div>
+                    <div className="stack" style={{marginBottom:12}}>
+                      {rounds.map((r,idx)=>{
+                        const comp=(r.matches||[]).filter(m=>m.completed).length;
+                        const tot=(r.matches||[]).length;
+                        return(
+                          <div key={idx} className={"round-header "+(curRound===idx?"active":"")} onClick={()=>setCurRound(idx)}>
+                            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                              {editRnd===idx?(
+                                <input autoFocus value={rndTmp} style={{width:160,padding:"4px 8px",fontSize:13,borderRadius:8}}
+                                  onClick={e=>e.stopPropagation()}
+                                  onChange={e=>setRndTmp(e.target.value)}
+                                  onKeyDown={e=>{if(e.key==="Enter")renameRound(idx,rndTmp);if(e.key==="Escape")setEditRnd(null);}}
+                                />
+                              ):<b>{r.name||`Ronda ${r.number}`}</b>}
+                              <span className={"pill "+(comp===tot&&tot>0?"green":comp>0?"orange":"")}>{comp}/{tot} completados</span>
+                              {r.isClassificatory&&<span className="pill">Clasificatoria</span>}
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="hr"></div>
-
-                    {rounds[currentRound] && (
-                      <>
-                        <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: 10 }}>
-                          <h3 style={{ margin: 0 }}>{rounds[currentRound]?.name || `Ronda ${rounds[currentRound]?.number}`}</h3>
-                          <span className="muted small">Desempate: <b>{config.tiebreak}</b></span>
-                        </div>
-
-                        {/* ===== TABLA DE ENFRENTAMIENTOS: layout card en móvil, tabla en desktop ===== */}
-                        <div>
-                          {/* Desktop */}
-                          <div className="table-wrap" style={{ display: "none" }} id="rounds-desktop-table">
+                            <div className="toolbar" onClick={e=>e.stopPropagation()}>
+                              {editRnd===idx?(
+                                <><button className="primary sm" onClick={()=>renameRound(idx,rndTmp)}>✓</button><button className="sm" onClick={()=>setEditRnd(null)}>✕</button></>
+                              ):(
+                                <><button className="sm" onClick={()=>{setEditRnd(idx);setRndTmp(r.name||`Ronda ${r.number}`);}}>✏️</button><button className="sm" onClick={()=>regenRound(idx)}>🔄</button><button className="danger sm" onClick={()=>deleteRound(idx)}>🗑️ Borrar</button></>
+                              )}
+                            </div>
                           </div>
-
-                          {/* Usamos un enfoque de cards responsive */}
-                          <div className="stack">
-                            {(rounds[currentRound]?.matches || []).map((m, idx) => {
-                              const favor = computedTeams.find(t => t.id === m.aFavor);
-                              const contra = computedTeams.find(t => t.id === m.enContra);
-                              return (
-                                <div key={m.id} style={{ border: "1px solid #eee", borderRadius: 10, padding: "12px 14px", background: "#fff" }}>
-                                  {/* Header del enfrentamiento */}
-                                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flex: 1 }}>
-                                      <span className="muted small nowrap">Mesa {idx + 1}</span>
-                                      <b style={{ color: "#1a1a2e" }}>{favor?.name || "—"}</b>
-                                      <span className="muted small">{favor?.school || ""}</span>
-                                      <span className="vs-badge">A FAVOR</span>
-                                      <span className="muted">vs</span>
-                                      <span className="vs-badge" style={{ background: "#1d4ed8" }}>EN CONTRA</span>
-                                      <b style={{ color: "#1a1a2e" }}>{contra?.name || "—"}</b>
-                                      <span className="muted small">{contra?.school || ""}</span>
-                                    </div>
-                                    <div className="toolbar">
-                                      {m.completed ? <span className="pill green">✓ Completado</span> : <span className="pill orange">Pendiente</span>}
-                                      <button className="danger sm" title="Eliminar enfrentamiento" onClick={() => deleteMatch(currentRound, idx)}>🗑️</button>
+                        );
+                      })}
+                    </div>
+                    <div className="hr"></div>
+                    {rounds[curRound]&&(
+                      <>
+                        <div className="toolbar" style={{justifyContent:"space-between",marginBottom:12}}>
+                          <h3 style={{margin:0}}>{rounds[curRound]?.name||`Ronda ${rounds[curRound]?.number}`}</h3>
+                          <span className="muted small">Desempate: <b>{cfg.tiebreak}</b></span>
+                        </div>
+                        <div className="stack">
+                          {(rounds[curRound]?.matches||[]).map((m,idx)=>{
+                            const fav=computed.find(t=>t.id===m.aFavor);
+                            const con=computed.find(t=>t.id===m.enContra);
+                            return(
+                              <div key={m.id} style={{border:"1px solid #eee",borderRadius:10,padding:"12px 14px",background:"#fff"}}>
+                                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flex:1}}>
+                                    <span className="muted small">Mesa {idx+1}</span>
+                                    <b>{fav?.name||"—"}</b>{fav?.school&&<span className="muted small">{fav.school}</span>}
+                                    <span className="vs-badge">A FAVOR</span>
+                                    <span className="muted">vs</span>
+                                    <span className="vs-badge" style={{background:"#1d4ed8"}}>EN CONTRA</span>
+                                    <b>{con?.name||"—"}</b>{con?.school&&<span className="muted small">{con.school}</span>}
+                                  </div>
+                                  <div className="toolbar">
+                                    {m.completed?<span className="pill green">✓ Completado</span>:<span className="pill orange">Pendiente</span>}
+                                    <button className="danger sm" onClick={()=>deleteMatch(curRound,idx)}>🗑️</button>
+                                  </div>
+                                </div>
+                                {(m.room||m.judges?.length>0)&&(
+                                  <div className="muted small" style={{marginBottom:10}}>
+                                    {m.room&&<span>🏫 {m.room.name}{m.room.location?` · ${m.room.location}`:""}</span>}
+                                    {m.judges?.length>0&&<span> · 🧑‍⚖️ {m.judges.map(j=>j.name).join(", ")}</span>}
+                                  </div>
+                                )}
+                                <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-end"}}>
+                                  <div>
+                                    <div className="muted small" style={{marginBottom:4}}>Ítems A favor / En contra</div>
+                                    <div className="score-pair">
+                                      <input type="number" style={{width:80}} value={m.favorItems??""} onChange={e=>updMatch(curRound,idx,{favorItems:e.target.value})} placeholder="A fav"/>
+                                      <span className="score-sep">/</span>
+                                      <input type="number" style={{width:80}} value={m.contraItems??""} onChange={e=>updMatch(curRound,idx,{contraItems:e.target.value})} placeholder="En c."/>
                                     </div>
                                   </div>
-
-                                  {/* Sala y jueces */}
-                                  {(m.room || (m.judges && m.judges.length > 0)) && (
-                                    <div className="muted small" style={{ marginBottom: 10 }}>
-                                      {m.room && <span>🏫 {m.room.name}{m.room.location ? ` · ${m.room.location}` : ""}</span>}
-                                      {m.judges?.length > 0 && <span> · 🧑‍⚖️ {m.judges.map(j => j.name).join(", ")}</span>}
-                                    </div>
-                                  )}
-
-                                  {/* Inputs de resultado */}
-                                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
-                                    <div>
-                                      <div className="muted small" style={{ marginBottom: 4 }}>Ítems A favor / En contra</div>
-                                      <div className="score-pair">
-                                        <input type="number" className="score-pair input" style={{ width: 80 }}
-                                          value={m.favorItems ?? ""}
-                                          onChange={e => updateMatch(currentRound, idx, { favorItems: e.target.value })}
-                                          placeholder="A fav"
-                                        />
-                                        <span className="score-sep">/</span>
-                                        <input type="number" style={{ width: 80 }}
-                                          value={m.contraItems ?? ""}
-                                          onChange={e => updateMatch(currentRound, idx, { contraItems: e.target.value })}
-                                          placeholder="En c."
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <div className="muted small" style={{ marginBottom: 4 }}>Votos A favor / En contra <span className="pill" style={{ fontSize: 10 }}>opcional</span></div>
-                                      <div className="score-pair">
-                                        <input type="number" style={{ width: 80 }}
-                                          value={m.favorVotes ?? ""}
-                                          onChange={e => updateMatch(currentRound, idx, { favorVotes: e.target.value })}
-                                          placeholder="A fav"
-                                        />
-                                        <span className="score-sep">/</span>
-                                        <input type="number" style={{ width: 80 }}
-                                          value={m.contraVotes ?? ""}
-                                          onChange={e => updateMatch(currentRound, idx, { contraVotes: e.target.value })}
-                                          placeholder="En c."
-                                        />
-                                      </div>
+                                  <div>
+                                    <div className="muted small" style={{marginBottom:4}}>Votos A favor / En contra <span className="pill" style={{fontSize:10}}>opcional</span></div>
+                                    <div className="score-pair">
+                                      <input type="number" style={{width:80}} value={m.favorVotes??""} onChange={e=>updMatch(curRound,idx,{favorVotes:e.target.value})} placeholder="A fav"/>
+                                      <span className="score-sep">/</span>
+                                      <input type="number" style={{width:80}} value={m.contraVotes??""} onChange={e=>updMatch(curRound,idx,{contraVotes:e.target.value})} placeholder="En c."/>
                                     </div>
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
+                              </div>
+                            );
+                          })}
                         </div>
-
-                        <div className="muted small" style={{ marginTop: 10 }}>
-                          * Se marca "Completado" cuando hay ítems en ambos lados. Los votos son opcionales (solo necesarios si el desempate incluye "Votos").
-                        </div>
+                        <div className="muted small" style={{marginTop:10}}>* "Completado" cuando hay ítems en ambos lados. Los votos son opcionales.</div>
                       </>
                     )}
                   </>
@@ -1551,102 +817,68 @@
               </div>
             )}
 
-            {/* ===== RANKING ===== */}
-            {activeTab === "ranking" && (
+            {/* RANKING */}
+            {tab==="ranking"&&(
               <div className="card">
-                <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                  <h2 style={{ margin: 0 }}>Clasificación</h2>
+                <div className="toolbar" style={{justifyContent:"space-between"}}>
+                  <h2 style={{margin:0}}>Clasificación</h2>
                   <button className="primary" onClick={exportStandings}>⬇️ Exportar Excel</button>
                 </div>
                 <div className="spacer"></div>
-                {computedTeams.length === 0 ? (
-                  <div className="muted">Añade equipos primero.</div>
-                ) : (
+                {computed.length===0?<div className="muted">Añade equipos primero.</div>:(
                   <>
-                    <h3 style={{ marginTop: 0 }}>Ranking de equipos</h3>
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Pos</th><th>Equipo</th><th>Institución</th>
-                            <th>Pts</th><th>Ítems</th><th>Votos</th><th className="nowrap">A / E</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getStandings().map((t, idx) => (
-                            <tr key={t.id}>
-                              <td className="nowrap"><b>{idx + 1}</b></td>
-                              <td className="wrap">{t.name}</td>
-                              <td className="wrap muted">{t.school}</td>
-                              <td className="nowrap"><b>{t.points}</b></td>
-                              <td className="nowrap">{t.itemsWon}</td>
-                              <td className="nowrap">{t.votesWon}</td>
-                              <td className="nowrap">{t.positions?.afavor || 0} / {t.positions?.enContra || 0}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
+                    <h3 style={{marginTop:0}}>Ranking de equipos</h3>
+                    <div className="table-wrap"><table>
+                      <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Pts</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                      <tbody>{standings.map((t,i)=>(
+                        <tr key={t.id}>
+                          <td><b>{i+1}</b></td><td className="wrap">{t.name}</td><td className="wrap muted">{t.school}</td>
+                          <td><b>{t.points}</b></td><td>{t.itemsWon}</td><td>{t.votesWon}</td>
+                          <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
+                        </tr>
+                      ))}</tbody>
+                    </table></div>
                     <div className="hr"></div>
-                    <h3 style={{ marginTop: 0 }}>Ranking de oradores</h3>
-                    <SpeakerRanking />
+                    <h3>Ranking de oradores</h3>
+                    <SpeakerRanking computed={computed}/>
                   </>
                 )}
               </div>
             )}
 
-            {/* Footer */}
-            <div className="card" style={{ padding: "10px 14px" }}>
-              <div className="muted small">
-                💾 Datos guardados de forma persistente — accesibles desde cualquier dispositivo al iniciar sesión. · Oradores por equipo: <b>{config.speakersPerTeam}</b>.
-              </div>
+            <div className="card" style={{padding:"10px 14px"}}>
+              <div className="muted small">☁️ Datos guardados en Supabase (Frankfurt) — accesibles desde cualquier dispositivo. · Oradores/equipo: <b>{cfg.speakersPerTeam}</b>.</div>
             </div>
           </div>
         );
-
-        // ===== SpeakerRanking component =====
-        function SpeakerRanking() {
-          const [role, setRole] = useState("TODOS");
-          const ranking = getSpeakerRanking(role);
-          return (
-            <div>
-              <div style={{ marginBottom: 10 }}>
-                <label>Filtrar por rol</label>
-                <select value={role} onChange={e => setRole(e.target.value)} style={{ maxWidth: 240 }}>
-                  <option value="TODOS">Todos (general)</option>
-                  {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-              </div>
-              {ranking.length === 0 ? (
-                <div className="muted">No hay oradores con nombre todavía.</div>
-              ) : (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr><th>Pos</th><th>Orador</th><th>Rol</th><th>Equipo</th><th>Institución</th><th className="right">Puntos</th></tr>
-                    </thead>
-                    <tbody>
-                      {ranking.map((s, idx) => (
-                        <tr key={s.speakerId}>
-                          <td><b>{idx + 1}</b></td>
-                          <td className="wrap">{s.name}</td>
-                          <td className="nowrap">{s.role}</td>
-                          <td className="wrap">{s.teamName}</td>
-                          <td className="wrap muted">{s.school}</td>
-                          <td className="right nowrap"><b>{s.points}</b></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        }
       }
 
-      ReactDOM.createRoot(document.getElementById("root")).render(<DebateTabulator />);
+      function SpeakerRanking({computed}){
+        const [role,setRole]=useState("TODOS");
+        const list=[];
+        for(const t of computed) for(const s of (t.speakers||[])) list.push({id:s.id,name:s.name||"",role:s.role||"",points:Number(s.points||0),teamName:t.name,school:t.school});
+        const filtered=(role==="TODOS"?list:list.filter(s=>s.role===role)).filter(s=>s.name.trim()).sort((a,b)=>b.points!==a.points?b.points-a.points:a.name.localeCompare(b.name));
+        return(
+          <div>
+            <div style={{marginBottom:10}}><label>Filtrar por rol</label>
+              <select value={role} onChange={e=>setRole(e.target.value)} style={{maxWidth:240}}>
+                <option value="TODOS">Todos (general)</option>
+                {ROLES.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+            {filtered.length===0?<div className="muted">No hay oradores con nombre.</div>:(
+              <div className="table-wrap"><table>
+                <thead><tr><th>Pos</th><th>Orador</th><th>Rol</th><th>Equipo</th><th>Institución</th><th className="right">Puntos</th></tr></thead>
+                <tbody>{filtered.map((s,i)=>(
+                  <tr key={s.id}><td><b>{i+1}</b></td><td className="wrap">{s.name}</td><td className="nowrap">{s.role}</td><td className="wrap">{s.teamName}</td><td className="wrap muted">{s.school}</td><td className="right"><b>{s.points}</b></td></tr>
+                ))}</tbody>
+              </table></div>
+            )}
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
     </script>
   </body>
 </html>
