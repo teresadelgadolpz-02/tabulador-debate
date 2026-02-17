@@ -5,275 +5,351 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tabulador de Debate Académico</title>
 
-    <!-- =========================
-         CONFIG EMPRESA (EDITA AQUÍ)
-         ========================= -->
     <script>
-      // ✅ En GitHub Pages (mismo nivel que index.html): "./logo.jpg"
-      // ✅ En tu dominio con logo en raíz: "/logo.jpg"
-      // ✅ En URL externa: "https://tudominio.com/logo.jpg"
       window.COMPANY_LOGO_URL = "./logo.jpg";
       window.COMPANY_NAME = "Learn By Talking Formación";
     </script>
 
-    <!-- React 18 UMD -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-
-    <!-- Babel (JSX en el navegador) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- XLSX -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
       :root {
         color-scheme: light;
         --brand: #930203;
+        --brand-light: rgba(147, 2, 3, 0.08);
+        --brand-border: rgba(147, 2, 3, 0.25);
         --bg: #f6f7fb;
         --card: #ffffff;
         --border: #e8e8ee;
         --muted: #666;
+        --danger: #dc2626;
       }
+
+      *, *::before, *::after { box-sizing: border-box; }
 
       body {
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
         margin: 0;
         background: var(--bg);
-        color: var(--brand);
+        color: #111;
+        font-size: 14px;
+        overflow-x: hidden;
       }
 
       header {
         background: var(--card);
         border-bottom: 1px solid var(--border);
-        padding: 14px 16px;
+        padding: 12px 16px;
         display: flex;
-        gap: 12px;
+        gap: 10px;
         align-items: center;
         justify-content: space-between;
         position: sticky;
         top: 0;
-        z-index: 10;
+        z-index: 100;
       }
 
       .header-left {
         display: flex;
         align-items: center;
-        gap: 12px;
-        min-width: 200px;
+        gap: 10px;
+        min-width: 0;
       }
 
       .brand-logo {
-        width: 46px;
-        height: 46px;
+        width: 40px;
+        height: 40px;
         object-fit: contain;
-        border-radius: 10px;
+        border-radius: 8px;
         border: 1px solid #eee;
         background: #fff;
-        padding: 6px;
+        padding: 4px;
+        flex-shrink: 0;
       }
 
       h1 {
-        font-size: 16px;
+        font-size: 15px;
         margin: 0;
         color: var(--brand);
+        white-space: nowrap;
       }
 
       .container {
-        max-width: 1100px;
-        margin: 16px auto;
-        padding: 0 16px 40px;
+        max-width: 100%;
+        width: 100%;
+        margin: 0 auto;
+        padding: 14px 16px 40px;
       }
 
       .card {
         background: var(--card);
         border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 18px;
-        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        width: 100%;
+        overflow: hidden;
       }
 
-      /* ESPACIADO MEJORADO */
       .toolbar {
         display: flex;
-        gap: 12px;
+        gap: 8px;
         flex-wrap: wrap;
         align-items: center;
       }
+
       .tabs {
         display: flex;
-        gap: 12px;
+        gap: 6px;
         flex-wrap: wrap;
       }
-      .row {
-        display: grid;
-        gap: 16px;
-      }
-      .row.cols2 {
-        grid-template-columns: 1fr 1fr;
-      }
-      .row.cols3 {
-        grid-template-columns: 1fr 1fr 1fr;
-      }
-      .row.cols4 {
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-      }
 
-      @media (max-width: 900px) {
-        .row.cols2,
-        .row.cols3,
-        .row.cols4 {
-          grid-template-columns: 1fr;
-        }
-        header {
-          flex-direction: column;
-          align-items: stretch;
-        }
-        table {
-          display: block;
-          overflow-x: auto;
-        }
+      /* Grid layouts — colapsan en móvil */
+      .row { display: grid; gap: 14px; }
+      .row.cols2 { grid-template-columns: 1fr 1fr; }
+      .row.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+      .row.cols4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+      @media (max-width: 700px) {
+        .row.cols2, .row.cols3, .row.cols4 { grid-template-columns: 1fr; }
+        header { flex-wrap: wrap; }
+        h1 { font-size: 13px; }
       }
 
       label {
         font-size: 12px;
         display: block;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
         color: var(--brand);
+        font-weight: 600;
       }
 
-      input,
-      select,
-      textarea {
+      input, select, textarea {
         width: 100%;
-        padding: 12px;
+        padding: 9px 11px;
         border: 1px solid #d9d9e3;
-        border-radius: 12px;
+        border-radius: 10px;
         background: #fff;
         color: #111;
-        box-sizing: border-box;
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.15s;
       }
 
+      input:focus, select:focus { border-color: var(--brand); }
+
       button {
-        padding: 12px 14px;
-        border-radius: 12px;
+        padding: 9px 13px;
+        border-radius: 10px;
         border: 1px solid #d9d9e3;
         background: white;
         cursor: pointer;
         color: var(--brand);
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        transition: all 0.15s;
       }
-
-      button.primary {
-        background: var(--brand);
-        border-color: var(--brand);
-        color: #fff;
-      }
-
-      button.danger {
-        background: #ff3b30;
-        border-color: #ff3b30;
-        color: #fff;
-      }
-
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
+      button:hover { background: #f5f5f7; }
+      button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+      button.primary:hover { background: #7a0102; }
+      button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+      button.danger:hover { background: #b91c1c; }
+      button.sm { padding: 6px 10px; font-size: 12px; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
 
       .tab {
-        padding: 10px 12px;
+        padding: 8px 12px;
         border-radius: 999px;
         border: 1px solid #d9d9e3;
         background: white;
-        font-size: 13px;
+        font-size: 12px;
         color: var(--brand);
+        white-space: nowrap;
       }
-
       .tab.active {
-        background: rgba(147, 2, 3, 0.08);
-        border-color: rgba(147, 2, 3, 0.35);
+        background: var(--brand-light);
+        border-color: var(--brand-border);
+        font-weight: 600;
       }
 
-      table {
+      /* ===== TABLA RESPONSIVE SIN SCROLL LATERAL ===== */
+      .table-wrap {
         width: 100%;
-        border-collapse: collapse;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
       }
-      th,
-      td {
+
+      /* Tabla de rondas: diseño compacto tipo card-stack en móvil */
+      .rounds-table { width: 100%; border-collapse: collapse; }
+      .rounds-table th, .rounds-table td {
         border-bottom: 1px solid #eee;
-        padding: 12px;
+        padding: 10px 8px;
         text-align: left;
         font-size: 13px;
         vertical-align: top;
       }
-      th {
-        font-size: 12px;
-        color: var(--brand);
-        opacity: 0.85;
+      .rounds-table th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+
+      /* En pantallas pequeñas, convertimos tabla de ronda en cards */
+      @media (max-width: 800px) {
+        .rounds-table thead { display: none; }
+        .rounds-table tr {
+          display: block;
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          margin-bottom: 10px;
+          padding: 10px;
+        }
+        .rounds-table td {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 8px;
+          border-bottom: 1px solid #f0f0f0;
+          padding: 6px 0;
+          font-size: 13px;
+        }
+        .rounds-table td:last-child { border-bottom: none; }
+        .rounds-table td::before {
+          content: attr(data-label);
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--muted);
+          min-width: 80px;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          flex-shrink: 0;
+        }
+        .rounds-table td .score-pair {
+          flex-direction: column;
+          gap: 6px;
+        }
       }
 
-      table input,
-      table select {
-        min-width: 140px;
+      /* Score inputs en par */
+      .score-pair {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .score-pair input {
+        width: 72px;
+        min-width: 0;
+        padding: 7px;
+        text-align: center;
+      }
+      .score-sep { color: var(--muted); font-weight: 700; }
+
+      /* Tabla genérica */
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border-bottom: 1px solid #eee; padding: 10px 8px; text-align: left; font-size: 13px; vertical-align: top; }
+      th { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+
+      @media (max-width: 700px) {
+        table { display: block; overflow-x: auto; }
+        table input, table select { min-width: 90px; }
       }
 
-      .muted {
-        color: var(--muted);
-        font-size: 12px;
-      }
+      .muted { color: var(--muted); }
+      .small { font-size: 12px; }
       .pill {
-        display: inline-block;
-        padding: 3px 8px;
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
         border-radius: 999px;
         background: #f0f1f5;
-        font-size: 12px;
-        color: #111;
+        font-size: 11px;
+        color: #555;
+        font-weight: 500;
       }
+      .pill.green { background: #d1fae5; color: #065f46; }
+      .pill.orange { background: #fef3c7; color: #92400e; }
+      .pill.blue { background: #dbeafe; color: #1d4ed8; }
 
-      .spacer {
-        height: 12px;
-      }
-      .hr {
-        height: 1px;
-        background: #eee;
-        margin: 14px 0;
-      }
-      .right {
-        text-align: right;
-      }
-      .small {
-        font-size: 12px;
-      }
-      .nowrap {
-        white-space: nowrap;
-      }
-      .wrap {
-        word-break: break-word;
-      }
+      .spacer { height: 10px; }
+      .hr { height: 1px; background: #eee; margin: 12px 0; }
+      .right { text-align: right; }
+      .nowrap { white-space: nowrap; }
+      .wrap { word-break: break-word; }
+      code { background: #f0f1f5; padding: 2px 6px; border-radius: 6px; color: #111; font-size: 12px; }
 
-      code {
-        background: #f0f1f5;
-        padding: 2px 6px;
-        border-radius: 6px;
-        color: #111;
-      }
-
-      .stack {
-        display: grid;
-        gap: 10px;
-      }
+      .stack { display: grid; gap: 8px; }
 
       .speakerRow {
         display: grid;
-        grid-template-columns: 1fr 220px 140px;
-        gap: 10px;
+        grid-template-columns: 1fr 180px 110px;
+        gap: 8px;
         align-items: center;
       }
-      @media (max-width: 900px) {
-        .speakerRow {
-          grid-template-columns: 1fr;
-        }
+      @media (max-width: 700px) { .speakerRow { grid-template-columns: 1fr; } }
+
+      /* Round list */
+      .round-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.12s;
+        background: #fff;
+        margin-bottom: 6px;
       }
+      .round-header:hover { background: #fafafa; }
+      .round-header.active { border-color: var(--brand-border); background: var(--brand-light); }
+
+      /* Toast */
+      .toast {
+        border: 1px solid var(--brand-border);
+        background: rgba(147,2,3,0.04);
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+
+      /* Match card on mobile */
+      .match-row-mobile {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 8px;
+        background: #fff;
+      }
+      .match-row-mobile .match-teams {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .vs-badge {
+        background: var(--brand);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+
+      /* Sync status */
+      .sync-badge {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #d1fae5;
+        color: #065f46;
+        font-weight: 600;
+      }
+      .sync-badge.error { background: #fee2e2; color: #991b1b; }
+      .sync-badge.loading { background: #e0e7ff; color: #3730a3; }
     </style>
   </head>
 
@@ -283,7 +359,7 @@
         <img id="companyLogo" class="brand-logo" alt="Logo" />
         <div>
           <h1>Tabulador de Debate Académico</h1>
-          <div id="companyName" class="muted"></div>
+          <div id="companyName" class="muted small"></div>
         </div>
       </div>
       <div id="header-actions" class="toolbar"></div>
@@ -294,41 +370,49 @@
     </div>
 
     <script type="text/babel">
-      const { useEffect, useMemo, useState } = React;
+      const { useEffect, useMemo, useState, useCallback, useRef } = React;
 
-      // Pintar marca fija (robusto)
       document.getElementById("companyLogo").src = window.COMPANY_LOGO_URL || "";
       document.getElementById("companyLogo").onerror = () => {
-        // si falla, ocultamos para que no quede el icono roto
         document.getElementById("companyLogo").style.display = "none";
       };
       document.getElementById("companyName").textContent =
         "Un proyecto de " + (window.COMPANY_NAME || "Learn By Talking Formación");
 
-      // ===== Storage (localStorage) =====
+      // ===== Storage: usa window.storage (cross-device) si existe, si no localStorage =====
       const storage = {
         async get(key) {
-          const value = localStorage.getItem(key);
-          return value ? { value } : null;
+          if (window.storage) {
+            try {
+              const r = await window.storage.get(key);
+              return r ? { value: r.value } : null;
+            } catch(e) { return null; }
+          }
+          const v = localStorage.getItem(key);
+          return v ? { value: v } : null;
         },
         async set(key, value) {
+          if (window.storage) {
+            try { await window.storage.set(key, value); } catch(e) {}
+          }
           localStorage.setItem(key, value);
         },
         async remove(key) {
+          if (window.storage) {
+            try { await window.storage.delete(key); } catch(e) {}
+          }
           localStorage.removeItem(key);
         }
       };
 
       function uid() {
-        return Date.now() + Math.floor(Math.random() * 1e6);
+        return Date.now() + "" + Math.floor(Math.random() * 1e6);
       }
 
       async function sha256(text) {
         const enc = new TextEncoder().encode(text);
         const buf = await crypto.subtle.digest("SHA-256", enc);
-        return Array.from(new Uint8Array(buf))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
       }
 
       async function loadUsers() {
@@ -360,18 +444,14 @@
         const [isAuthenticated, setIsAuthenticated] = useState(false);
         const [currentUser, setCurrentUser] = useState(null);
         const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-        const [registerForm, setRegisterForm] = useState({
-          name: "",
-          email: "",
-          password: "",
-          confirmPassword: ""
-        });
+        const [registerForm, setRegisterForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
         const [hasAnyUser, setHasAnyUser] = useState(null);
         const [isRegistering, setIsRegistering] = useState(false);
+        const [syncStatus, setSyncStatus] = useState("ok"); // "ok" | "saving" | "error"
 
         // ===== Toast =====
-        const [toast, setToast] = useState(null); // {title, message}
-        function showToast(title, message, ms = 6000) {
+        const [toast, setToast] = useState(null);
+        function showToast(title, message, ms = 5500) {
           setToast({ title, message });
           window.clearTimeout(window.__toastTimer);
           window.__toastTimer = window.setTimeout(() => setToast(null), ms);
@@ -386,73 +466,80 @@
           allowRepeatMatchups: false,
           numGroups: 4,
           groupSize: 4,
-
-          speakersPerTeam: 2, // ✅ 2..5
-          tiebreak: "Ítems > Enfrentamiento directo" // ✅ selector como foto
+          speakersPerTeam: 2,
+          tiebreak: "Ítems > Enfrentamiento directo"
         });
 
         const [teams, setTeams] = useState([]);
         const [rounds, setRounds] = useState([]);
         const [currentRound, setCurrentRound] = useState(0);
-
         const [groups, setGroups] = useState([]);
         const [rooms, setRooms] = useState([]);
         const [judges, setJudges] = useState([]);
-
         const [tournaments, setTournaments] = useState([]);
         const [currentTournamentId, setCurrentTournamentId] = useState(null);
-
         const [activeTab, setActiveTab] = useState("torneos");
+
+        // ===== Round editing state =====
+        const [editingRoundName, setEditingRoundName] = useState(null); // roundIdx being renamed
+        const [roundNameTemp, setRoundNameTemp] = useState("");
+
         const hasTournament = !!currentTournamentId;
 
-        // ===== First load: check if users exist =====
+        // ===== First load =====
         useEffect(() => {
           (async () => {
             try {
               const users = await loadUsers();
               const any = users.length > 0;
               setHasAnyUser(any);
-              setIsRegistering(!any); // si no hay usuarios, forzar registro
-            } catch (e) {
+              setIsRegistering(!any);
+            } catch(e) {
               setHasAnyUser(false);
               setIsRegistering(true);
             }
           })();
         }, []);
 
-        // ===== Load user tournaments after auth =====
         useEffect(() => {
           if (isAuthenticated && currentUser) loadUserData();
         }, [isAuthenticated, currentUser]);
 
         // ===== Autosave =====
+        const saveTimer = useRef(null);
         useEffect(() => {
-          if (isAuthenticated && currentUser && currentTournamentId) saveCurrentTournament();
-          // eslint-disable-next-line react-hooks/exhaustive-deps
+          if (isAuthenticated && currentUser && currentTournamentId) {
+            setSyncStatus("saving");
+            clearTimeout(saveTimer.current);
+            saveTimer.current = setTimeout(() => {
+              saveCurrentTournament().then(() => setSyncStatus("ok")).catch(() => setSyncStatus("error"));
+            }, 800);
+          }
         }, [teams, rounds, rooms, judges, config, groups, currentRound]);
 
         // ===== Header actions =====
         useEffect(() => {
           const node = document.getElementById("header-actions");
           if (!node) return;
-
           const HeaderButtons = () => (
             <div className="toolbar">
               {isAuthenticated ? (
                 <>
+                  {syncStatus === "saving" && <span className="sync-badge loading">💾 Guardando…</span>}
+                  {syncStatus === "ok" && <span className="sync-badge">✓ Guardado</span>}
+                  {syncStatus === "error" && <span className="sync-badge error">⚠ Error al guardar</span>}
                   <span className="small muted">👤 {currentUser?.name}</span>
-                  <button className="primary" onClick={handleLogout}>🚪 Salir</button>
+                  <button className="primary sm" onClick={handleLogout}>🚪 Salir</button>
                 </>
               ) : (
                 <span className="small muted">No autenticado</span>
               )}
             </div>
           );
-
           ReactDOM.createRoot(node).render(<HeaderButtons />);
-        }, [isAuthenticated, currentUser]);
+        }, [isAuthenticated, currentUser, syncStatus]);
 
-        // ===== Helpers Speakers =====
+        // ===== Speakers helpers =====
         function makeDefaultSpeakers(n) {
           const roles = ["Introductor", "Primer refutador", "Segundo refutador", "Conclusor", "Libre"];
           return Array.from({ length: n }).map((_, i) => ({
@@ -465,72 +552,52 @@
 
         function normalizeTeamsToSpeakersPerTeam(nextTeams, speakersPerTeam) {
           const n = Math.max(2, Math.min(5, Number(speakersPerTeam || 2)));
-          return nextTeams.map((t) => {
+          return nextTeams.map(t => {
             const existing = Array.isArray(t.speakers) ? t.speakers : [];
             const speakers = [...existing];
-
-            if (speakers.length < n) {
-              const add = makeDefaultSpeakers(n - speakers.length);
-              speakers.push(...add);
-            } else if (speakers.length > n) {
-              speakers.length = n;
-            }
-
+            if (speakers.length < n) speakers.push(...makeDefaultSpeakers(n - speakers.length));
+            else if (speakers.length > n) speakers.length = n;
             return { ...t, speakers };
           });
         }
 
-        // ===== Auth functions =====
+        // ===== Auth =====
         async function handleLogin() {
           try {
             const users = await loadUsers();
             const passwordHash = await sha256(loginForm.password);
             const email = loginForm.email.trim().toLowerCase();
-            const user = users.find((u) => u.email === email && u.passwordHash === passwordHash);
+            const user = users.find(u => u.email === email && u.passwordHash === passwordHash);
             if (!user) return alert("Email o contraseña incorrectos");
             setCurrentUser(user);
             setIsAuthenticated(true);
             setLoginForm({ email: "", password: "" });
-          } catch (e) {
-            alert("Email o contraseña incorrectos");
-          }
+          } catch(e) { alert("Email o contraseña incorrectos"); }
         }
 
         async function handleRegister() {
           const name = registerForm.name.trim();
           const email = registerForm.email.trim().toLowerCase();
-
           if (!name) return alert("Pon un nombre de usuario");
           if (!email) return alert("Pon un email");
-          if (registerForm.password !== registerForm.confirmPassword)
-            return alert("Las contraseñas no coinciden");
-          if (registerForm.password.length < 6)
-            return alert("La contraseña debe tener al menos 6 caracteres");
-
+          if (registerForm.password !== registerForm.confirmPassword) return alert("Las contraseñas no coinciden");
+          if (registerForm.password.length < 6) return alert("La contraseña debe tener al menos 6 caracteres");
           try {
             const users = await loadUsers();
-            if (users.find((u) => u.email === email)) return alert("Este email ya está registrado");
-
+            if (users.find(u => u.email === email)) return alert("Este email ya está registrado");
             const newUser = {
-              id: uid(),
-              name,
-              email,
+              id: uid(), name, email,
               passwordHash: await sha256(registerForm.password),
               createdAt: new Date().toISOString()
             };
-
             users.push(newUser);
             await storage.set("users", JSON.stringify(users));
-
             setHasAnyUser(true);
             setCurrentUser(newUser);
             setIsAuthenticated(true);
             setRegisterForm({ name: "", email: "", password: "", confirmPassword: "" });
             setIsRegistering(false);
-          } catch (e) {
-            console.error(e);
-            alert("Error al crear la cuenta");
-          }
+          } catch(e) { alert("Error al crear la cuenta"); }
         }
 
         function handleLogout() {
@@ -542,6 +609,7 @@
           setActiveTab("torneos");
           setIsRegistering(false);
           setToast(null);
+          setSyncStatus("ok");
         }
 
         // ===== Persistence =====
@@ -555,57 +623,36 @@
             } else {
               setTournaments([]);
             }
-          } catch (e) {
-            setTournaments([]);
-          }
+          } catch(e) { setTournaments([]); }
         }
 
         async function saveCurrentTournament() {
           if (!currentTournamentId) return;
-          try {
-            const tournamentData = {
-              id: currentTournamentId,
-              name: config.tournamentName || "Torneo sin nombre",
-              config,
-              teams,
-              rounds,
-              rooms,
-              judges,
-              groups,
-              currentRound,
-              lastModified: new Date().toISOString()
-            };
-
-            const updated = tournaments.filter((t) => t.id !== currentTournamentId);
-            updated.push(tournamentData);
-
-            const key = `tournaments_${currentUser.id}`;
-            await storage.set(key, JSON.stringify({ tournaments: updated }));
-            setTournaments(updated);
-          } catch (e) {
-            console.error("Error al guardar:", e);
-          }
+          const tournamentData = {
+            id: currentTournamentId,
+            name: config.tournamentName || "Torneo sin nombre",
+            config, teams, rounds, rooms, judges, groups, currentRound,
+            lastModified: new Date().toISOString()
+          };
+          const updated = tournaments.filter(t => t.id !== currentTournamentId);
+          updated.push(tournamentData);
+          const key = `tournaments_${currentUser.id}`;
+          await storage.set(key, JSON.stringify({ tournaments: updated }));
+          setTournaments(updated);
         }
 
         function loadTournament(t) {
           setCurrentTournamentId(t.id);
           setConfig(t.config || config);
-
-          const normalizedTeams = normalizeTeamsToSpeakersPerTeam(t.teams || [], (t.config?.speakersPerTeam ?? 2));
+          const normalizedTeams = normalizeTeamsToSpeakersPerTeam(t.teams || [], t.config?.speakersPerTeam ?? 2);
           setTeams(normalizedTeams);
-
           setRounds(t.rounds || []);
           setRooms(t.rooms || []);
           setJudges(t.judges || []);
           setGroups(t.groups || []);
           setCurrentRound(t.currentRound || 0);
           setActiveTab("config");
-
-          showToast(
-            "✅ Torneo cargado",
-            "Sigue en ⚙️ Config para comprobar ajustes, luego 👥 Equipos. Puedes añadir 🏫 Salas y 🧑‍⚖️ Jueces antes de generar 🧾 Rondas.",
-            5500
-          );
+          showToast("✅ Torneo cargado", "Revisa ⚙️ Config y después 👥 Equipos. Cuando estés listo genera 🧾 Rondas.");
         }
 
         function createNewTournament() {
@@ -613,198 +660,132 @@
           setCurrentTournamentId(newId);
           resetTournamentData();
           setActiveTab("config");
-
-          showToast(
-            "✅ Torneo creado correctamente",
-            "Siguiente paso: ve a ⚙️ Config (nombre, sistema, desempates, nº oradores) y después a 👥 Equipos.",
-            6500
-          );
+          showToast("✅ Torneo creado", "Configura en ⚙️ Config, añade 👥 Equipos y luego genera 🧾 Rondas.");
         }
 
         function resetTournamentData() {
           setConfig({
-            tournamentName: "",
-            roundsClasif: 6,
-            roundsFinales: 4,
-            tournamentSystem: "suizo",
-            allowRepeatMatchups: false,
-            numGroups: 4,
-            groupSize: 4,
-
-            speakersPerTeam: 2,
+            tournamentName: "", roundsClasif: 6, roundsFinales: 4,
+            tournamentSystem: "suizo", allowRepeatMatchups: false,
+            numGroups: 4, groupSize: 4, speakersPerTeam: 2,
             tiebreak: "Ítems > Enfrentamiento directo"
           });
-          setTeams([]);
-          setRounds([]);
-          setRooms([]);
-          setJudges([]);
-          setGroups([]);
-          setCurrentRound(0);
+          setTeams([]); setRounds([]); setRooms([]); setJudges([]);
+          setGroups([]); setCurrentRound(0);
         }
 
         async function deleteTournament(tournamentId) {
           if (!confirm("¿Estás seguro de eliminar este torneo?")) return;
           try {
-            const updated = tournaments.filter((t) => t.id !== tournamentId);
+            const updated = tournaments.filter(t => t.id !== tournamentId);
             const key = `tournaments_${currentUser.id}`;
             await storage.set(key, JSON.stringify({ tournaments: updated }));
             setTournaments(updated);
-
             if (currentTournamentId === tournamentId) {
               setCurrentTournamentId(null);
               resetTournamentData();
               setActiveTab("torneos");
             }
-          } catch (e) {
-            alert("Error al eliminar el torneo");
-          }
+          } catch(e) { alert("Error al eliminar el torneo"); }
         }
 
         // ===== CRUD Teams =====
         function addTeam() {
-          const speakerCount = Math.max(2, Math.min(5, Number(config.speakersPerTeam || 2)));
+          const n = Math.max(2, Math.min(5, Number(config.speakersPerTeam || 2)));
           const newTeam = {
-            id: uid(),
-            name: `Equipo ${teams.length + 1}`,
-            school: "",
-            speakers: makeDefaultSpeakers(speakerCount),
-
-            // stats recalculados desde rondas
-            points: 0,
-            itemsWon: 0,
-            votesWon: 0,
-            opponents: [],
+            id: uid(), name: `Equipo ${teams.length + 1}`, school: "",
+            speakers: makeDefaultSpeakers(n),
+            points: 0, itemsWon: 0, votesWon: 0, opponents: [],
             positions: { afavor: 0, enContra: 0 }
           };
-          setTeams(normalizeTeamsToSpeakersPerTeam([...teams, newTeam], speakerCount));
+          setTeams(normalizeTeamsToSpeakersPerTeam([...teams, newTeam], n));
         }
-
-        function deleteTeam(id) {
-          setTeams(teams.filter((t) => t.id !== id));
-        }
-
+        function deleteTeam(id) { setTeams(teams.filter(t => t.id !== id)); }
         function updateTeam(id, field, value) {
-          setTeams(teams.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
+          setTeams(teams.map(t => t.id === id ? { ...t, [field]: value } : t));
         }
-
         function updateSpeaker(teamId, speakerId, field, value) {
-          setTeams(
-            teams.map((t) => {
-              if (t.id !== teamId) return t;
-              const speakers = (t.speakers || []).map((s) => (s.id === speakerId ? { ...s, [field]: value } : s));
-              return { ...t, speakers };
-            })
-          );
+          setTeams(teams.map(t => {
+            if (t.id !== teamId) return t;
+            const speakers = (t.speakers || []).map(s => s.id === speakerId ? { ...s, [field]: value } : s);
+            return { ...t, speakers };
+          }));
         }
 
-        // ===== CRUD Rooms =====
+        // ===== CRUD Rooms & Judges =====
         function addRoom() {
-          const newRoom = { id: uid(), name: `Sala ${rooms.length + 1}`, location: "", capacity: 50, available: true };
-          setRooms([...rooms, newRoom]);
+          setRooms([...rooms, { id: uid(), name: `Sala ${rooms.length + 1}`, location: "", capacity: 50, available: true }]);
         }
-        function deleteRoom(id) {
-          setRooms(rooms.filter((r) => r.id !== id));
-        }
-        function updateRoom(id, field, value) {
-          setRooms(rooms.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
-        }
+        function deleteRoom(id) { setRooms(rooms.filter(r => r.id !== id)); }
+        function updateRoom(id, field, value) { setRooms(rooms.map(r => r.id === id ? { ...r, [field]: value } : r)); }
 
-        // ===== CRUD Judges =====
         function addJudge() {
-          const newJudge = {
-            id: uid(),
-            name: `Juez ${judges.length + 1}`,
-            email: "",
-            type: "principal",
-            institution: "",
-            experience: 0,
-            available: true,
-            assignedMatches: [],
-            conflictInstitutions: []
-          };
-          setJudges([...judges, newJudge]);
+          setJudges([...judges, {
+            id: uid(), name: `Juez ${judges.length + 1}`, email: "",
+            type: "principal", institution: "", experience: 0,
+            available: true, assignedMatches: [], conflictInstitutions: []
+          }]);
         }
-        function deleteJudge(id) {
-          setJudges(judges.filter((j) => j.id !== id));
-        }
-        function updateJudge(id, field, value) {
-          setJudges(judges.map((j) => (j.id === id ? { ...j, [field]: value } : j)));
-        }
+        function deleteJudge(id) { setJudges(judges.filter(j => j.id !== id)); }
+        function updateJudge(id, field, value) { setJudges(judges.map(j => j.id === id ? { ...j, [field]: value } : j)); }
 
-        // ===== Excel templates =====
+        // ===== Excel =====
         function exportRoomsTemplate() {
-          const template = [
+          const ws = XLSX.utils.json_to_sheet([
             { Nombre: "Sala 1", Ubicación: "Edificio A - Piso 1", Capacidad: 50 },
-            { Nombre: "Sala 2", Ubicación: "Edificio A - Piso 2", Capacidad: 40 },
-            { Nombre: "Sala 3", Ubicación: "Edificio B - Piso 1", Capacidad: 60 }
-          ];
-          const ws = XLSX.utils.json_to_sheet(template);
+            { Nombre: "Sala 2", Ubicación: "Edificio A - Piso 2", Capacidad: 40 }
+          ]);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Salas");
           XLSX.writeFile(wb, "plantilla_salas.xlsx");
         }
-
         function exportJudgesTemplate() {
-          const template = [
-            { Nombre: "Juan Pérez", Email: "juan@email.com", Tipo: "principal", Institución: "Universidad A", Experiencia: 5 },
-            { Nombre: "María García", Email: "maria@email.com", Tipo: "panelista", Institución: "Universidad B", Experiencia: 3 },
-            { Nombre: "Carlos López", Email: "carlos@email.com", Tipo: "principal", Institución: "Universidad C", Experiencia: 7 }
-          ];
-          const ws = XLSX.utils.json_to_sheet(template);
+          const ws = XLSX.utils.json_to_sheet([
+            { Nombre: "Juan Pérez", Email: "juan@email.com", Tipo: "principal", Institución: "Univ A", Experiencia: 5 },
+            { Nombre: "María García", Email: "maria@email.com", Tipo: "panelista", Institución: "Univ B", Experiencia: 3 }
+          ]);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Jueces");
           XLSX.writeFile(wb, "plantilla_jueces.xlsx");
         }
-
         function importRoomsFromExcel(e) {
           const file = e.target.files?.[0];
           if (!file) return;
           const reader = new FileReader();
-          reader.onload = (event) => {
-            const data = new Uint8Array(event.target.result);
-            const wb = XLSX.read(data, { type: "array" });
-            const sheet = wb.Sheets[wb.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet);
-
+          reader.onload = ev => {
+            const wb = XLSX.read(new Uint8Array(ev.target.result), { type: "array" });
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
             const newRooms = json.map((row, idx) => ({
               id: uid() + idx,
-              name: row["Nombre"] || row["Name"] || `Sala ${idx + 1}`,
-              location: row["Ubicación"] || row["Location"] || "",
-              capacity: Number(row["Capacidad"] || row["Capacity"] || 50),
+              name: row["Nombre"] || `Sala ${idx + 1}`,
+              location: row["Ubicación"] || "",
+              capacity: Number(row["Capacidad"] || 50),
               available: true
             }));
-
-            setRooms((prev) => [...prev, ...newRooms]);
-            alert(`${newRooms.length} salas importadas correctamente`);
+            setRooms(prev => [...prev, ...newRooms]);
+            alert(`${newRooms.length} salas importadas`);
             e.target.value = "";
           };
           reader.readAsArrayBuffer(file);
         }
-
         function importJudgesFromExcel(e) {
           const file = e.target.files?.[0];
           if (!file) return;
           const reader = new FileReader();
-          reader.onload = (event) => {
-            const data = new Uint8Array(event.target.result);
-            const wb = XLSX.read(data, { type: "array" });
-            const sheet = wb.Sheets[wb.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet);
-
+          reader.onload = ev => {
+            const wb = XLSX.read(new Uint8Array(ev.target.result), { type: "array" });
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
             const newJudges = json.map((row, idx) => ({
               id: uid() + idx,
-              name: row["Nombre"] || row["Name"] || `Juez ${idx + 1}`,
-              email: row["Email"] || row["Correo"] || "",
-              type: String(row["Tipo"] || row["Type"] || "principal").toLowerCase(),
-              institution: row["Institución"] || row["Institution"] || "",
-              experience: Number(row["Experiencia"] || row["Experience"] || 0),
-              available: true,
-              assignedMatches: [],
-              conflictInstitutions: []
+              name: row["Nombre"] || `Juez ${idx + 1}`,
+              email: row["Email"] || "",
+              type: String(row["Tipo"] || "principal").toLowerCase(),
+              institution: row["Institución"] || "",
+              experience: Number(row["Experiencia"] || 0),
+              available: true, assignedMatches: [], conflictInstitutions: []
             }));
-
-            setJudges((prev) => [...prev, ...newJudges]);
-            alert(`${newJudges.length} jueces importados correctamente`);
+            setJudges(prev => [...prev, ...newJudges]);
+            alert(`${newJudges.length} jueces importados`);
             e.target.value = "";
           };
           reader.readAsArrayBuffer(file);
@@ -812,65 +793,46 @@
 
         // ===== Pairings =====
         function generatePairings() {
-          if (teams.length < 2) {
-            alert("Necesitas al menos 2 equipos");
-            return;
-          }
+          if (teams.length < 2) return alert("Necesitas al menos 2 equipos");
           let newMatches = [];
           if (config.tournamentSystem === "suizo") newMatches = generateSwissPairings();
           else if (config.tournamentSystem === "aleatorio") newMatches = generateRandomPairings();
           else if (config.tournamentSystem === "grupos") newMatches = generateGroupPairings();
-
           newMatches = assignRoomsAndJudges(newMatches);
 
           const newRound = {
             number: rounds.length + 1,
+            name: `Ronda ${rounds.length + 1}`,
             matches: newMatches,
             isClassificatory: rounds.length < Number(config.roundsClasif || 0)
           };
-
-          setRounds([...rounds, newRound]);
-          setCurrentRound(rounds.length);
+          const newRounds = [...rounds, newRound];
+          setRounds(newRounds);
+          setCurrentRound(newRounds.length - 1);
           setActiveTab("rondas");
         }
 
         function generateSwissPairings() {
-          const sorted = getStandings(); // ya aplica desempates
-
+          const sorted = getStandings();
           const matches = [];
           const paired = new Set();
-
           for (let i = 0; i < sorted.length; i++) {
             if (paired.has(sorted[i].id)) continue;
-
             for (let j = i + 1; j < sorted.length; j++) {
               if (paired.has(sorted[j].id)) continue;
-
-              const t1 = sorted[i];
-              const t2 = sorted[j];
-
-              const canMatch = config.allowRepeatMatchups || !(t1.opponents || []).includes(t2.id);
-              if (!canMatch) continue;
-
+              const t1 = sorted[i], t2 = sorted[j];
+              if (!config.allowRepeatMatchups && (t1.opponents || []).includes(t2.id)) continue;
               const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
-
               matches.push({
-                id: uid(),
-                aFavor: t1IsFavor ? t1.id : t2.id,
+                id: uid(), aFavor: t1IsFavor ? t1.id : t2.id,
                 enContra: t1IsFavor ? t2.id : t1.id,
-                favorItems: null,
-                contraItems: null,
-                favorVotes: null,
-                contraVotes: null,
-                completed: false
+                favorItems: null, contraItems: null,
+                favorVotes: null, contraVotes: null, completed: false
               });
-
-              paired.add(t1.id);
-              paired.add(t2.id);
+              paired.add(t1.id); paired.add(t2.id);
               break;
             }
           }
-
           return matches;
         }
 
@@ -878,21 +840,14 @@
           const shuffled = [...teams].sort(() => Math.random() - 0.5);
           const matches = [];
           for (let i = 0; i < shuffled.length - 1; i += 2) {
-            const t1 = shuffled[i];
-            const t2 = shuffled[i + 1];
+            const t1 = shuffled[i], t2 = shuffled[i + 1];
             if (!t1 || !t2) continue;
-
             const t1IsFavor = Math.random() > 0.5;
-
             matches.push({
-              id: uid(),
-              aFavor: t1IsFavor ? t1.id : t2.id,
+              id: uid(), aFavor: t1IsFavor ? t1.id : t2.id,
               enContra: t1IsFavor ? t2.id : t1.id,
-              favorItems: null,
-              contraItems: null,
-              favorVotes: null,
-              contraVotes: null,
-              completed: false
+              favorItems: null, contraItems: null,
+              favorVotes: null, contraVotes: null, completed: false
             });
           }
           return matches;
@@ -900,216 +855,126 @@
 
         function createGroups() {
           const shuffled = [...teams].sort(() => Math.random() - 0.5);
-          const newGroups = [];
           const numGroups = Math.max(1, Number(config.numGroups || 1));
-
-          for (let i = 0; i < numGroups; i++) {
-            newGroups.push({ id: i + 1, name: `Grupo ${String.fromCharCode(65 + i)}`, teams: [] });
-          }
-
+          const newGroups = Array.from({ length: numGroups }, (_, i) => ({
+            id: i + 1, name: `Grupo ${String.fromCharCode(65 + i)}`, teams: []
+          }));
           shuffled.forEach((team, idx) => {
-            const gIdx = idx % numGroups;
-            team.groupId = newGroups[gIdx].id;
-            newGroups[gIdx].teams.push(team.id);
+            const g = newGroups[idx % numGroups];
+            team.groupId = g.id;
+            g.teams.push(team.id);
           });
-
           setGroups(newGroups);
           setTeams([...shuffled]);
         }
 
         function generateGroupPairings() {
           if (rounds.length === 0 && groups.length === 0) createGroups();
-
           const matches = [];
-          groups.forEach((group) => {
-            const groupTeams = teams.filter((t) => t.groupId === group.id);
-            for (let i = 0; i < groupTeams.length - 1; i++) {
-              for (let j = i + 1; j < groupTeams.length; j++) {
-                const t1 = groupTeams[i];
-                const t2 = groupTeams[j];
+          groups.forEach(group => {
+            const gt = teams.filter(t => t.groupId === group.id);
+            for (let i = 0; i < gt.length - 1; i++) {
+              for (let j = i + 1; j < gt.length; j++) {
+                const t1 = gt[i], t2 = gt[j];
                 if ((t1.opponents || []).includes(t2.id)) continue;
-
                 const t1IsFavor = (t1.positions?.afavor || 0) <= (t1.positions?.enContra || 0);
-
                 matches.push({
-                  id: uid(),
-                  aFavor: t1IsFavor ? t1.id : t2.id,
+                  id: uid(), aFavor: t1IsFavor ? t1.id : t2.id,
                   enContra: t1IsFavor ? t2.id : t1.id,
-                  favorItems: null,
-                  contraItems: null,
-                  favorVotes: null,
-                  contraVotes: null,
-                  completed: false,
+                  favorItems: null, contraItems: null,
+                  favorVotes: null, contraVotes: null, completed: false,
                   groupId: group.id
                 });
               }
             }
           });
-
           return matches.slice(0, Math.floor(teams.length / 2));
         }
 
         function assignRoomsAndJudges(matches) {
-          const availableRooms = rooms.filter((r) => r.available);
-          const availableJudges = judges.filter((j) => j.available);
-          const principalJudges = availableJudges.filter((j) => j.type === "principal");
-          const panelistJudges = availableJudges.filter((j) => j.type === "panelista");
-
+          const availableRooms = rooms.filter(r => r.available);
+          const principalJudges = judges.filter(j => j.available && j.type === "principal");
+          const panelistJudges = judges.filter(j => j.available && j.type === "panelista");
           return matches.map((match, idx) => {
-            const favorTeam = teams.find((t) => t.id === match.aFavor);
-            const contraTeam = teams.find((t) => t.id === match.enContra);
+            const favorTeam = teams.find(t => t.id === match.aFavor);
+            const contraTeam = teams.find(t => t.id === match.enContra);
+            const institutions = [favorTeam?.school, contraTeam?.school].filter(Boolean);
+            const hasConflict = j => institutions.includes(j.institution) ||
+              (j.conflictInstitutions || []).some(i => institutions.includes(i));
 
             const room = availableRooms.length ? availableRooms[idx % availableRooms.length] : null;
-
-            const institutionsInMatch = [favorTeam?.school, contraTeam?.school].filter(Boolean);
-            const hasConflict = (judge) => {
-              if (institutionsInMatch.includes(judge.institution)) return true;
-              return (judge.conflictInstitutions || []).some((inst) => institutionsInMatch.includes(inst));
-            };
-
             const assigned = [];
+            const avP = principalJudges.filter(j => !hasConflict(j));
+            const p = avP.length ? avP[idx % avP.length] : principalJudges[idx % principalJudges.length];
+            if (p) assigned.push({ id: p.id, name: p.name, type: "principal", institution: p.institution });
 
-            const availablePrincipals = principalJudges.filter((j) => !hasConflict(j));
-            if (availablePrincipals.length) {
-              const principal = availablePrincipals[idx % availablePrincipals.length];
-              assigned.push({ id: principal.id, name: principal.name, type: "principal", institution: principal.institution });
-            } else if (principalJudges.length) {
-              const principal = principalJudges[idx % principalJudges.length];
-              assigned.push({ id: principal.id, name: principal.name, type: "principal", institution: principal.institution, hasConflict: true });
+            const avPan = panelistJudges.filter(j => !hasConflict(j) && !assigned.find(a => a.id === j.id));
+            for (let i = 0; i < Math.min(2, avPan.length); i++) {
+              assigned.push({ id: avPan[i].id, name: avPan[i].name, type: "panelista", institution: avPan[i].institution });
             }
-
-            const availablePanelists = panelistJudges.filter((j) => !hasConflict(j) && !assigned.find((a) => a.id === j.id));
-            const numPanelists = Math.min(2, availablePanelists.length);
-            for (let i = 0; i < numPanelists; i++) {
-              const p = availablePanelists[(idx + i) % availablePanelists.length];
-              if (p) assigned.push({ id: p.id, name: p.name, type: "panelista", institution: p.institution });
-            }
-
-            return {
-              ...match,
-              room: room ? { id: room.id, name: room.name, location: room.location } : null,
-              judges: assigned
-            };
+            return { ...match, room: room ? { id: room.id, name: room.name, location: room.location } : null, judges: assigned };
           });
         }
 
-        // ===== Recalcular clasificación desde rondas (evita errores al editar resultados) =====
+        // ===== Stats & standings =====
         function recomputeTeamStats(baseTeams, allRounds) {
           const map = new Map();
-          baseTeams.forEach((t) => {
-            map.set(t.id, {
-              ...t,
-              points: 0,
-              itemsWon: 0,
-              votesWon: 0,
-              opponents: [],
-              positions: { afavor: 0, enContra: 0 }
-            });
-          });
-
+          baseTeams.forEach(t => map.set(t.id, { ...t, points: 0, itemsWon: 0, votesWon: 0, opponents: [], positions: { afavor: 0, enContra: 0 } }));
           for (const r of allRounds) {
             for (const m of (r.matches || [])) {
               if (!m) continue;
-              const A = map.get(m.aFavor);
-              const B = map.get(m.enContra);
+              const A = map.get(m.aFavor), B = map.get(m.enContra);
               if (!A || !B) continue;
-
-              // oponentes y posiciones (siempre que haya emparejamiento)
               A.opponents = [...(A.opponents || []), B.id];
               B.opponents = [...(B.opponents || []), A.id];
               A.positions = { ...A.positions, afavor: (A.positions?.afavor || 0) + 1 };
               B.positions = { ...B.positions, enContra: (B.positions?.enContra || 0) + 1 };
-
               if (!m.completed) continue;
-              const aItems = Number(m.favorItems);
-              const bItems = Number(m.contraItems);
-              const aVotes = m.favorVotes === null || m.favorVotes === "" ? null : Number(m.favorVotes);
-              const bVotes = m.contraVotes === null || m.contraVotes === "" ? null : Number(m.contraVotes);
-
-              if (Number.isFinite(aItems)) A.itemsWon += aItems;
-              if (Number.isFinite(bItems)) B.itemsWon += bItems;
-
-              if (Number.isFinite(aVotes)) A.votesWon += aVotes;
-              if (Number.isFinite(bVotes)) B.votesWon += bVotes;
-
-              // puntos por debate (3-1-0)
-              const aWins = aItems > bItems;
-              const bWins = bItems > aItems;
-              if (aWins) {
-                A.points += 3;
-                B.points += 0;
-              } else if (bWins) {
-                B.points += 3;
-                A.points += 0;
-              } else {
-                A.points += 1;
-                B.points += 1;
-              }
+              const aI = Number(m.favorItems), bI = Number(m.contraItems);
+              const aV = m.favorVotes === null || m.favorVotes === "" ? null : Number(m.favorVotes);
+              const bV = m.contraVotes === null || m.contraVotes === "" ? null : Number(m.contraVotes);
+              if (Number.isFinite(aI)) A.itemsWon += aI;
+              if (Number.isFinite(bI)) B.itemsWon += bI;
+              if (Number.isFinite(aV)) A.votesWon += aV;
+              if (Number.isFinite(bV)) B.votesWon += bV;
+              if (aI > bI) { A.points += 3; }
+              else if (bI > aI) { B.points += 3; }
+              else { A.points += 1; B.points += 1; }
             }
           }
-
           return Array.from(map.values());
         }
 
-        // ===== Enfrentamiento directo (head-to-head) =====
         function headToHead(Aid, Bid) {
-          // devuelve +1 si A gana a B, -1 si pierde, 0 si no hay/empate
           for (const r of rounds) {
             for (const m of (r.matches || [])) {
               if (!m.completed) continue;
-
               const isAB = (m.aFavor === Aid && m.enContra === Bid) || (m.aFavor === Bid && m.enContra === Aid);
               if (!isAB) continue;
-
-              const aItems = Number(m.favorItems);
-              const bItems = Number(m.contraItems);
-              if (!Number.isFinite(aItems) || !Number.isFinite(bItems)) return 0;
-
-              // ojo: favor/contra depende de cómo se asignó
-              if (m.aFavor === Aid && m.enContra === Bid) {
-                if (aItems > bItems) return +1;
-                if (aItems < bItems) return -1;
-                return 0;
-              } else {
-                // Aid está en contra en ese match
-                if (bItems > aItems) return +1;
-                if (bItems < aItems) return -1;
-                return 0;
-              }
+              const aI = Number(m.favorItems), bI = Number(m.contraItems);
+              if (!Number.isFinite(aI) || !Number.isFinite(bI)) return 0;
+              if (m.aFavor === Aid) return aI > bI ? +1 : aI < bI ? -1 : 0;
+              else return bI > aI ? +1 : bI < aI ? -1 : 0;
             }
           }
           return 0;
         }
 
-        // ===== Comparador según criterio de desempate =====
         function compareTeams(a, b) {
-          // 1) puntos
           if (b.points !== a.points) return b.points - a.points;
-
-          const chain = String(config.tiebreak || "Ítems > Enfrentamiento directo");
-
-          const evalToken = (token) => {
-            if (token === "Ítems") return b.itemsWon - a.itemsWon;
-            if (token === "Votos") return b.votesWon - a.votesWon;
-            if (token === "Enfrentamiento directo") return headToHead(a.id, b.id) * -1; // invertimos porque queremos que a quede antes si gana (+1)
-            return 0;
-          };
-
-          const parts = chain.split(">").map((p) => p.trim());
+          const parts = String(config.tiebreak || "Ítems > Enfrentamiento directo").split(">").map(p => p.trim());
           for (const p of parts) {
-            const v = evalToken(p);
+            let v = 0;
+            if (p === "Ítems") v = b.itemsWon - a.itemsWon;
+            else if (p === "Votos") v = b.votesWon - a.votesWon;
+            else if (p === "Enfrentamiento directo") v = headToHead(a.id, b.id) * -1;
             if (v !== 0) return v;
           }
-
-          // último: por nombre
           return String(a.name || "").localeCompare(String(b.name || ""));
         }
 
-        // ===== Standings con stats recalculados =====
         const computedTeams = useMemo(() => {
-          // normalizamos oradores
           const normalized = normalizeTeamsToSpeakersPerTeam(teams, config.speakersPerTeam);
-          // si cambió el nº, no forzamos setTeams aquí para evitar loops, solo calculamos
           return recomputeTeamStats(normalized, rounds);
         }, [teams, rounds, config.speakersPerTeam, config.tiebreak]);
 
@@ -1117,14 +982,13 @@
           return [...computedTeams].sort(compareTeams);
         }
 
-        // ===== Actualizar un match (items/votos) y marcar completado =====
+        // ===== Match update =====
         function updateMatch(roundIdx, matchIdx, patch) {
           const newRounds = rounds.map((r, ri) => {
             if (ri !== roundIdx) return r;
             const matches = (r.matches || []).map((m, mi) => {
               if (mi !== matchIdx) return m;
               const next = { ...m, ...patch };
-              // completado si tiene items numéricos
               const aOk = next.favorItems !== null && next.favorItems !== "" && Number.isFinite(Number(next.favorItems));
               const bOk = next.contraItems !== null && next.contraItems !== "" && Number.isFinite(Number(next.contraItems));
               next.completed = aOk && bOk;
@@ -1135,54 +999,66 @@
           setRounds(newRounds);
         }
 
-        // ===== Export Excel =====
+        // ===== Round management =====
+        function deleteRound(roundIdx) {
+          if (!confirm(`¿Eliminar la ${rounds[roundIdx]?.name || `Ronda ${roundIdx + 1}`}? Se borrarán todos sus resultados.`)) return;
+          const newRounds = rounds.filter((_, i) => i !== roundIdx);
+          setRounds(newRounds);
+          setCurrentRound(Math.max(0, Math.min(currentRound, newRounds.length - 1)));
+        }
+
+        function renameRound(roundIdx, newName) {
+          setRounds(rounds.map((r, i) => i === roundIdx ? { ...r, name: newName } : r));
+          setEditingRoundName(null);
+        }
+
+        function regenerateRound(roundIdx) {
+          if (!confirm("¿Regenerar los emparejamientos de esta ronda? Se perderán los resultados actuales.")) return;
+          let newMatches = [];
+          if (config.tournamentSystem === "suizo") newMatches = generateSwissPairings();
+          else if (config.tournamentSystem === "aleatorio") newMatches = generateRandomPairings();
+          else newMatches = generateGroupPairings();
+          newMatches = assignRoomsAndJudges(newMatches);
+          setRounds(rounds.map((r, i) => i === roundIdx ? { ...r, matches: newMatches } : r));
+        }
+
+        function deleteMatch(roundIdx, matchIdx) {
+          if (!confirm("¿Eliminar este enfrentamiento?")) return;
+          setRounds(rounds.map((r, ri) => {
+            if (ri !== roundIdx) return r;
+            return { ...r, matches: (r.matches || []).filter((_, mi) => mi !== matchIdx) };
+          }));
+        }
+
+        // ===== Export =====
         function exportStandings() {
           const standings = getStandings();
-          const data = standings.map((team, idx) => ({
-            "Posición": idx + 1,
-            "Equipo": team.name,
-            "Institución": team.school,
-            "Puntos": team.points,
-            "Ítems Ganados": team.itemsWon,
-            "Votos Ganados": team.votesWon,
-            "A favor": team.positions?.afavor || 0,
-            "En contra": team.positions?.enContra || 0,
-            "Oradores": (team.speakers || []).map((s) => `${s.name || "-"} (${s.role || "-"})`).join(", ")
+          const data = standings.map((t, idx) => ({
+            "Posición": idx + 1, "Equipo": t.name, "Institución": t.school,
+            "Puntos": t.points, "Ítems Ganados": t.itemsWon, "Votos Ganados": t.votesWon,
+            "A favor": t.positions?.afavor || 0, "En contra": t.positions?.enContra || 0,
+            "Oradores": (t.speakers || []).map(s => `${s.name || "-"} (${s.role || "-"})`).join(", ")
           }));
-
           const ws = XLSX.utils.json_to_sheet(data);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Clasificación General");
           XLSX.writeFile(wb, "clasificacion_general.xlsx");
         }
 
-        // ===== Ranking de oradores (general y por rol) =====
+        // ===== Speaker ranking =====
         const speakerList = useMemo(() => {
           const list = [];
           for (const t of computedTeams) {
             for (const s of (t.speakers || [])) {
-              list.push({
-                speakerId: s.id,
-                name: s.name || "",
-                role: s.role || "",
-                points: Number(s.points || 0),
-                teamId: t.id,
-                teamName: t.name,
-                school: t.school
-              });
+              list.push({ speakerId: s.id, name: s.name || "", role: s.role || "", points: Number(s.points || 0), teamId: t.id, teamName: t.name, school: t.school });
             }
           }
           return list;
         }, [computedTeams]);
 
         function getSpeakerRanking(roleFilter = "TODOS") {
-          const filtered = roleFilter === "TODOS" ? speakerList : speakerList.filter((s) => s.role === roleFilter);
-          return filtered
-            .filter((s) => (s.name || "").trim().length > 0)
-            .sort((a, b) => {
-              if (b.points !== a.points) return b.points - a.points;
-              return a.name.localeCompare(b.name);
-            });
+          const filtered = roleFilter === "TODOS" ? speakerList : speakerList.filter(s => s.role === roleFilter);
+          return filtered.filter(s => s.name.trim().length > 0).sort((a, b) => b.points !== a.points ? b.points - a.points : a.name.localeCompare(b.name));
         }
 
         // ===== UI helpers =====
@@ -1193,96 +1069,54 @@
               onClick={() => setActiveTab(id)}
               disabled={!isAuthenticated || (!hasTournament && id !== "torneos")}
               title={!hasTournament && id !== "torneos" ? "Crea o carga un torneo primero" : ""}
-            >
-              {children}
-            </button>
+            >{children}</button>
           );
         }
 
         // ===== Auth screen =====
         if (!isAuthenticated) {
-          if (hasAnyUser === null) {
-            return (
-              <div className="card">
-                <div className="muted">Cargando…</div>
-              </div>
-            );
-          }
-
+          if (hasAnyUser === null) return <div className="card"><div className="muted">Cargando…</div></div>;
           const forceRegister = !hasAnyUser;
-
           return (
             <div className="card">
               <h2 style={{ marginTop: 0 }}>{forceRegister ? "Crear primera cuenta" : "Acceso"}</h2>
-
               {!forceRegister && (
                 <div className="tabs" style={{ marginBottom: 12 }}>
-                  <button className={"tab " + (!isRegistering ? "active" : "")} onClick={() => setIsRegistering(false)}>
-                    Login
-                  </button>
-                  <button className={"tab " + (isRegistering ? "active" : "")} onClick={() => setIsRegistering(true)}>
-                    Registro
-                  </button>
+                  <button className={"tab " + (!isRegistering ? "active" : "")} onClick={() => setIsRegistering(false)}>Login</button>
+                  <button className={"tab " + (isRegistering ? "active" : "")} onClick={() => setIsRegistering(true)}>Registro</button>
                 </div>
               )}
-
               {(forceRegister || isRegistering) ? (
                 <div className="row cols2">
-                  <div>
-                    <label>Nombre</label>
-                    <input value={registerForm.name} onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })} />
-                  </div>
-                  <div>
-                    <label>Email</label>
-                    <input value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} />
-                  </div>
-                  <div>
-                    <label>Contraseña</label>
-                    <input type="password" value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} />
-                  </div>
-                  <div>
-                    <label>Confirmar contraseña</label>
-                    <input type="password" value={registerForm.confirmPassword} onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} />
-                  </div>
+                  <div><label>Nombre</label><input value={registerForm.name} onChange={e => setRegisterForm({ ...registerForm, name: e.target.value })} /></div>
+                  <div><label>Email</label><input value={registerForm.email} onChange={e => setRegisterForm({ ...registerForm, email: e.target.value })} /></div>
+                  <div><label>Contraseña</label><input type="password" value={registerForm.password} onChange={e => setRegisterForm({ ...registerForm, password: e.target.value })} /></div>
+                  <div><label>Confirmar contraseña</label><input type="password" value={registerForm.confirmPassword} onChange={e => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })} /></div>
                   <div className="toolbar" style={{ gridColumn: "1 / -1" }}>
-                    <button className="primary" onClick={handleRegister}>
-                      {forceRegister ? "Crear primera cuenta" : "Crear cuenta"}
-                    </button>
+                    <button className="primary" onClick={handleRegister}>{forceRegister ? "Crear primera cuenta" : "Crear cuenta"}</button>
                   </div>
                 </div>
               ) : (
                 <div className="row cols2">
-                  <div>
-                    <label>Email</label>
-                    <input value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} />
-                  </div>
-                  <div>
-                    <label>Contraseña</label>
-                    <input type="password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} />
-                  </div>
+                  <div><label>Email</label><input value={loginForm.email} onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} /></div>
+                  <div><label>Contraseña</label><input type="password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} /></div>
                   <div className="toolbar" style={{ gridColumn: "1 / -1" }}>
-                    <button className="primary" onClick={handleLogin}>
-                      Entrar
-                    </button>
+                    <button className="primary" onClick={handleLogin}>Entrar</button>
                   </div>
                 </div>
               )}
-
               <div className="hr"></div>
-              <p className="muted">
-                Los datos se guardan en <code>localStorage</code>. Si borras datos del navegador, se pierden.
-              </p>
-              <p className="muted" style={{ marginBottom: 0 }}>
-                <b>Un proyecto de {window.COMPANY_NAME || "Learn By Talking Formación"}</b>
-              </p>
+              <p className="muted small">Los datos se guardan de forma persistente y estarán disponibles desde cualquier dispositivo cuando inicies sesión.</p>
+              <p className="muted small" style={{ marginBottom: 0 }}><b>Un proyecto de {window.COMPANY_NAME || "Learn By Talking Formación"}</b></p>
             </div>
           );
         }
 
         // ===== Main app =====
         return (
-          <div className="row" style={{ gap: 14 }}>
-            <div className="card">
+          <div className="row" style={{ gap: 12 }}>
+            {/* TABS */}
+            <div className="card" style={{ padding: "12px 14px" }}>
               <div className="toolbar" style={{ justifyContent: "space-between" }}>
                 <div className="tabs">
                   <TabButton id="torneos">🏆 Torneos</TabButton>
@@ -1293,158 +1127,117 @@
                   <TabButton id="rondas">🧾 Rondas</TabButton>
                   <TabButton id="ranking">📊 Ranking</TabButton>
                 </div>
-
-                <div className="toolbar">
-                  <button onClick={createNewTournament} className="primary">
-                    ➕ Nuevo torneo
-                  </button>
-                </div>
+                <button className="primary sm" onClick={createNewTournament}>➕ Nuevo torneo</button>
               </div>
             </div>
 
             {/* TOAST */}
             {toast && (
-              <div
-                className="card"
-                style={{
-                  borderColor: "rgba(147,2,3,0.35)",
-                  background: "rgba(147,2,3,0.04)"
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <div style={{ minWidth: 240 }}>
-                    <div style={{ fontWeight: 800, marginBottom: 6 }}>{toast.title}</div>
-                    <div className="muted">{toast.message}</div>
+              <div className="toast">
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{toast.title}</div>
+                    <div className="muted small">{toast.message}</div>
                   </div>
-                  <button className="primary" onClick={() => setToast(null)}>
-                    Entendido
-                  </button>
+                  <button className="primary sm" onClick={() => setToast(null)}>✕</button>
                 </div>
               </div>
             )}
 
+            {/* ===== TORNEOS ===== */}
             {activeTab === "torneos" && (
               <div className="card">
                 <h2 style={{ marginTop: 0 }}>Tus torneos</h2>
-                <div className="muted small">Se guardan por usuario en este navegador.</div>
+                <div className="muted small">Se guardan de forma persistente y son accesibles desde cualquier dispositivo.</div>
                 <div className="spacer"></div>
-
                 {tournaments.length === 0 ? (
-                  <div className="muted">No hay torneos todavía. Pulsa “Nuevo torneo”.</div>
+                  <div className="muted">No hay torneos todavía. Pulsa "Nuevo torneo".</div>
                 ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Nombre</th>
-                        <th className="nowrap">Última edición</th>
-                        <th className="right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tournaments
-                        .slice()
-                        .sort((a, b) => (b.lastModified || "").localeCompare(a.lastModified || ""))
-                        .map((t) => (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Nombre</th>
+                          <th className="nowrap">Última edición</th>
+                          <th className="right">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tournaments.slice().sort((a, b) => (b.lastModified || "").localeCompare(a.lastModified || "")).map(t => (
                           <tr key={t.id}>
                             <td className="wrap">
-                              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                                 <b>{t.name}</b>
-                                {currentTournamentId === t.id ? <span className="pill">abierto</span> : null}
+                                {currentTournamentId === t.id && <span className="pill blue">abierto</span>}
                               </div>
                               <div className="muted small">Equipos: {t.teams?.length || 0} · Rondas: {t.rounds?.length || 0}</div>
                             </td>
                             <td className="nowrap muted small">{t.lastModified ? new Date(t.lastModified).toLocaleString() : "-"}</td>
-                            <td className="right nowrap">
-                              <button className="primary" onClick={() => loadTournament(t)}>Abrir</button>{" "}
-                              <button className="danger" onClick={() => deleteTournament(t.id)}>Eliminar</button>
+                            <td className="right nowrap" style={{ whiteSpace: "nowrap" }}>
+                              <button className="primary sm" onClick={() => loadTournament(t)}>Abrir</button>{" "}
+                              <button className="danger sm" onClick={() => deleteTournament(t.id)}>🗑️</button>
                             </td>
                           </tr>
                         ))}
-                    </tbody>
-                  </table>
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
+            {/* ===== CONFIG ===== */}
             {activeTab === "config" && (
               <div className="card">
                 <h2 style={{ marginTop: 0 }}>Configuración</h2>
-
                 <div className="row cols3">
                   <div>
                     <label>Nombre del torneo</label>
-                    <input value={config.tournamentName} onChange={(e) => setConfig({ ...config, tournamentName: e.target.value })} />
+                    <input value={config.tournamentName} onChange={e => setConfig({ ...config, tournamentName: e.target.value })} />
                   </div>
-
                   <div>
                     <label>Sistema</label>
-                    <select value={config.tournamentSystem} onChange={(e) => setConfig({ ...config, tournamentSystem: e.target.value })}>
+                    <select value={config.tournamentSystem} onChange={e => setConfig({ ...config, tournamentSystem: e.target.value })}>
                       <option value="suizo">Suizo</option>
                       <option value="aleatorio">Aleatorio</option>
                       <option value="grupos">Grupos</option>
                     </select>
                   </div>
-
                   <div>
-                    <label>Permitir repetición</label>
-                    <select
-                      value={String(config.allowRepeatMatchups)}
-                      onChange={(e) => setConfig({ ...config, allowRepeatMatchups: e.target.value === "true" })}
-                    >
+                    <label>Repetición de enfrentamientos</label>
+                    <select value={String(config.allowRepeatMatchups)} onChange={e => setConfig({ ...config, allowRepeatMatchups: e.target.value === "true" })}>
                       <option value="false">No</option>
                       <option value="true">Sí</option>
                     </select>
                   </div>
-
                   <div>
-                    <label>Nº oradores por equipo (2 a 5)</label>
-                    <select
-                      value={String(config.speakersPerTeam)}
-                      onChange={(e) => {
-                        const v = Math.max(2, Math.min(5, Number(e.target.value)));
-                        setConfig({ ...config, speakersPerTeam: v });
-                        setTeams((prev) => normalizeTeamsToSpeakersPerTeam(prev, v));
-                      }}
-                    >
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="4">4</option>
-                      <option value="5">5</option>
+                    <label>Nº oradores por equipo (2–5)</label>
+                    <select value={String(config.speakersPerTeam)} onChange={e => {
+                      const v = Math.max(2, Math.min(5, Number(e.target.value)));
+                      setConfig({ ...config, speakersPerTeam: v });
+                      setTeams(prev => normalizeTeamsToSpeakersPerTeam(prev, v));
+                    }}>
+                      {[2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
-
                   <div style={{ gridColumn: "span 2" }}>
                     <label>Criterio de desempate</label>
-                    <select value={config.tiebreak} onChange={(e) => setConfig({ ...config, tiebreak: e.target.value })}>
-                      {TIEBREAK_OPTIONS.map((o) => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
+                    <select value={config.tiebreak} onChange={e => setConfig({ ...config, tiebreak: e.target.value })}>
+                      {TIEBREAK_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
-                    <div className="muted small" style={{ marginTop: 6 }}>
-                      * “Enfrentamiento directo” se aplica cuando hay debate previo entre los equipos empatados. “Votos” se toma de los votos registrados en la ronda.
+                    <div className="muted small" style={{ marginTop: 5 }}>
+                      "Enfrentamiento directo" requiere debate previo entre los equipos empatados. "Votos" se toman de los registrados en rondas.
                     </div>
                   </div>
-
                   {config.tournamentSystem === "grupos" && (
                     <>
-                      <div>
-                        <label>Nº de grupos</label>
-                        <input type="number" value={config.numGroups} onChange={(e) => setConfig({ ...config, numGroups: Number(e.target.value) })} />
-                      </div>
-                      <div>
-                        <label>Tamaño grupo (info)</label>
-                        <input type="number" value={config.groupSize} onChange={(e) => setConfig({ ...config, groupSize: Number(e.target.value) })} />
-                      </div>
+                      <div><label>Nº de grupos</label><input type="number" value={config.numGroups} onChange={e => setConfig({ ...config, numGroups: Number(e.target.value) })} /></div>
+                      <div><label>Tamaño grupo (info)</label><input type="number" value={config.groupSize} onChange={e => setConfig({ ...config, groupSize: Number(e.target.value) })} /></div>
                     </>
                   )}
                 </div>
-
                 <div className="hr"></div>
-
-                <div className="toolbar" style={{ justifyContent: "space-between" }}>
-                  <div className="muted small">
-                    Logo fijo de la empresa (se muestra arriba). Lados del debate: <b>A favor</b> / <b>En contra</b>.
-                  </div>
+                <div className="toolbar" style={{ justifyContent: "flex-end" }}>
                   <button className="primary" onClick={generatePairings} disabled={computedTeams.length < 2}>
                     🧩 Generar emparejamientos (nueva ronda)
                   </button>
@@ -1452,74 +1245,56 @@
               </div>
             )}
 
+            {/* ===== EQUIPOS ===== */}
             {activeTab === "equipos" && (
               <div className="card">
                 <div className="toolbar" style={{ justifyContent: "space-between" }}>
                   <h2 style={{ margin: 0 }}>Equipos</h2>
-                  <button className="primary" onClick={addTeam}>➕ Añadir</button>
+                  <button className="primary" onClick={addTeam}>➕ Añadir equipo</button>
                 </div>
-
                 <div className="spacer"></div>
-
                 {teams.length === 0 ? (
-                  <div className="muted">No hay equipos.</div>
+                  <div className="muted">No hay equipos todavía.</div>
                 ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Equipo</th>
-                        <th>Institución</th>
-                        <th>Oradores (nombre · rol · puntos)</th>
-                        <th className="right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {normalizeTeamsToSpeakersPerTeam(teams, config.speakersPerTeam).map((t) => (
-                        <tr key={t.id}>
-                          <td>
-                            <input value={t.name} onChange={(e) => updateTeam(t.id, "name", e.target.value)} />
-                          </td>
-                          <td>
-                            <input value={t.school} onChange={(e) => updateTeam(t.id, "school", e.target.value)} />
-                          </td>
-                          <td>
-                            <div className="stack">
-                              {(t.speakers || []).map((s, idx) => (
-                                <div className="speakerRow" key={s.id}>
-                                  <input
-                                    placeholder={`Orador ${idx + 1}`}
-                                    value={s.name || ""}
-                                    onChange={(e) => updateSpeaker(t.id, s.id, "name", e.target.value)}
-                                  />
-                                  <select value={s.role || "Libre"} onChange={(e) => updateSpeaker(t.id, s.id, "role", e.target.value)}>
-                                    {ROLE_OPTIONS.map((r) => (
-                                      <option key={r.value} value={r.value}>{r.label}</option>
-                                    ))}
-                                  </select>
-                                  <input
-                                    type="number"
-                                    placeholder="Puntos"
-                                    value={String(s.points ?? 0)}
-                                    onChange={(e) => updateSpeaker(t.id, s.id, "points", Number(e.target.value))}
-                                  />
-                                </div>
-                              ))}
-                              <div className="muted small">
-                                Estos puntos alimentan el ranking de oradores (general y por rol).
-                              </div>
-                            </div>
-                          </td>
-                          <td className="right">
-                            <button className="danger" onClick={() => deleteTeam(t.id)}>🗑️</button>
-                          </td>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Equipo</th>
+                          <th>Institución</th>
+                          <th>Oradores</th>
+                          <th className="right">Acc.</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {normalizeTeamsToSpeakersPerTeam(teams, config.speakersPerTeam).map(t => (
+                          <tr key={t.id}>
+                            <td style={{ minWidth: 140 }}><input value={t.name} onChange={e => updateTeam(t.id, "name", e.target.value)} /></td>
+                            <td style={{ minWidth: 140 }}><input value={t.school} onChange={e => updateTeam(t.id, "school", e.target.value)} /></td>
+                            <td style={{ minWidth: 360 }}>
+                              <div className="stack">
+                                {(t.speakers || []).map((s, idx) => (
+                                  <div className="speakerRow" key={s.id}>
+                                    <input placeholder={`Orador ${idx + 1}`} value={s.name || ""} onChange={e => updateSpeaker(t.id, s.id, "name", e.target.value)} />
+                                    <select value={s.role || "Libre"} onChange={e => updateSpeaker(t.id, s.id, "role", e.target.value)}>
+                                      {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                    </select>
+                                    <input type="number" placeholder="Puntos" value={String(s.points ?? 0)} onChange={e => updateSpeaker(t.id, s.id, "points", Number(e.target.value))} />
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="right"><button className="danger sm" onClick={() => deleteTeam(t.id)}>🗑️</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
+            {/* ===== SALAS ===== */}
             {activeTab === "salas" && (
               <div className="card">
                 <div className="toolbar" style={{ justifyContent: "space-between" }}>
@@ -1533,43 +1308,35 @@
                     <button className="primary" onClick={addRoom}>➕ Añadir</button>
                   </div>
                 </div>
-
                 <div className="spacer"></div>
-
-                {rooms.length === 0 ? (
-                  <div className="muted">No hay salas.</div>
-                ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Nombre</th>
-                        <th>Ubicación</th>
-                        <th>Capacidad</th>
-                        <th>Disponible</th>
-                        <th className="right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rooms.map((r) => (
-                        <tr key={r.id}>
-                          <td><input value={r.name} onChange={(e) => updateRoom(r.id, "name", e.target.value)} /></td>
-                          <td><input value={r.location} onChange={(e) => updateRoom(r.id, "location", e.target.value)} /></td>
-                          <td style={{ width: 160 }}><input type="number" value={r.capacity} onChange={(e) => updateRoom(r.id, "capacity", Number(e.target.value))} /></td>
-                          <td style={{ width: 160 }}>
-                            <select value={String(r.available)} onChange={(e) => updateRoom(r.id, "available", e.target.value === "true")}>
-                              <option value="true">Sí</option>
-                              <option value="false">No</option>
-                            </select>
-                          </td>
-                          <td className="right"><button className="danger" onClick={() => deleteRoom(r.id)}>🗑️</button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {rooms.length === 0 ? <div className="muted">No hay salas.</div> : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>Nombre</th><th>Ubicación</th><th>Capacidad</th><th>Disponible</th><th className="right">Acc.</th></tr>
+                      </thead>
+                      <tbody>
+                        {rooms.map(r => (
+                          <tr key={r.id}>
+                            <td><input value={r.name} onChange={e => updateRoom(r.id, "name", e.target.value)} /></td>
+                            <td><input value={r.location} onChange={e => updateRoom(r.id, "location", e.target.value)} /></td>
+                            <td style={{ width: 130 }}><input type="number" value={r.capacity} onChange={e => updateRoom(r.id, "capacity", Number(e.target.value))} /></td>
+                            <td style={{ width: 130 }}>
+                              <select value={String(r.available)} onChange={e => updateRoom(r.id, "available", e.target.value === "true")}>
+                                <option value="true">Sí</option><option value="false">No</option>
+                              </select>
+                            </td>
+                            <td className="right"><button className="danger sm" onClick={() => deleteRoom(r.id)}>🗑️</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
+            {/* ===== JUECES ===== */}
             {activeTab === "jueces" && (
               <div className="card">
                 <div className="toolbar" style={{ justifyContent: "space-between" }}>
@@ -1583,50 +1350,41 @@
                     <button className="primary" onClick={addJudge}>➕ Añadir</button>
                   </div>
                 </div>
-
                 <div className="spacer"></div>
-
-                {judges.length === 0 ? (
-                  <div className="muted">No hay jueces.</div>
-                ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Tipo</th>
-                        <th>Institución</th>
-                        <th>Disponible</th>
-                        <th className="right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {judges.map((j) => (
-                        <tr key={j.id}>
-                          <td><input value={j.name} onChange={(e) => updateJudge(j.id, "name", e.target.value)} /></td>
-                          <td><input value={j.email} onChange={(e) => updateJudge(j.id, "email", e.target.value)} /></td>
-                          <td style={{ width: 170 }}>
-                            <select value={j.type} onChange={(e) => updateJudge(j.id, "type", e.target.value)}>
-                              <option value="principal">principal</option>
-                              <option value="panelista">panelista</option>
-                            </select>
-                          </td>
-                          <td><input value={j.institution} onChange={(e) => updateJudge(j.id, "institution", e.target.value)} /></td>
-                          <td style={{ width: 160 }}>
-                            <select value={String(j.available)} onChange={(e) => updateJudge(j.id, "available", e.target.value === "true")}>
-                              <option value="true">Sí</option>
-                              <option value="false">No</option>
-                            </select>
-                          </td>
-                          <td className="right"><button className="danger" onClick={() => deleteJudge(j.id)}>🗑️</button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {judges.length === 0 ? <div className="muted">No hay jueces.</div> : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>Nombre</th><th>Email</th><th>Tipo</th><th>Institución</th><th>Disponible</th><th className="right">Acc.</th></tr>
+                      </thead>
+                      <tbody>
+                        {judges.map(j => (
+                          <tr key={j.id}>
+                            <td><input value={j.name} onChange={e => updateJudge(j.id, "name", e.target.value)} /></td>
+                            <td><input value={j.email} onChange={e => updateJudge(j.id, "email", e.target.value)} /></td>
+                            <td style={{ width: 150 }}>
+                              <select value={j.type} onChange={e => updateJudge(j.id, "type", e.target.value)}>
+                                <option value="principal">principal</option>
+                                <option value="panelista">panelista</option>
+                              </select>
+                            </td>
+                            <td><input value={j.institution} onChange={e => updateJudge(j.id, "institution", e.target.value)} /></td>
+                            <td style={{ width: 130 }}>
+                              <select value={String(j.available)} onChange={e => updateJudge(j.id, "available", e.target.value === "true")}>
+                                <option value="true">Sí</option><option value="false">No</option>
+                              </select>
+                            </td>
+                            <td className="right"><button className="danger sm" onClick={() => deleteJudge(j.id)}>🗑️</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             )}
 
+            {/* ===== RONDAS ===== */}
             {activeTab === "rondas" && (
               <div className="card">
                 <div className="toolbar" style={{ justifyContent: "space-between" }}>
@@ -1640,212 +1398,248 @@
                 <div className="spacer"></div>
 
                 {rounds.length === 0 ? (
-                  <div className="muted">No hay rondas. Genera una desde Config.</div>
+                  <div className="muted">No hay rondas. Genera una desde ⚙️ Config o pulsa "Nueva ronda".</div>
                 ) : (
                   <>
-                    <div className="toolbar">
-                      <label className="small muted">Ronda actual</label>
-                      <select value={currentRound} onChange={(e) => setCurrentRound(Number(e.target.value))}>
-                        {rounds.map((r, idx) => (
-                          <option key={r.number} value={idx}>Ronda {r.number}</option>
-                        ))}
-                      </select>
-                      <span className="muted small">Desempate: <b>{config.tiebreak}</b></span>
+                    {/* Lista de rondas con edición/borrado */}
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ marginBottom: 8 }}>Seleccionar ronda</label>
+                      <div className="stack">
+                        {rounds.map((r, idx) => {
+                          const completed = (r.matches || []).filter(m => m.completed).length;
+                          const total = (r.matches || []).length;
+                          const isActive = currentRound === idx;
+                          return (
+                            <div key={r.number + "-" + idx} className={"round-header " + (isActive ? "active" : "")} onClick={() => setCurrentRound(idx)}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+                                {editingRoundName === idx ? (
+                                  <input
+                                    autoFocus
+                                    value={roundNameTemp}
+                                    style={{ width: 160, padding: "4px 8px", fontSize: 13, borderRadius: 8 }}
+                                    onClick={e => e.stopPropagation()}
+                                    onChange={e => setRoundNameTemp(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter") renameRound(idx, roundNameTemp);
+                                      if (e.key === "Escape") setEditingRoundName(null);
+                                    }}
+                                  />
+                                ) : (
+                                  <b>{r.name || `Ronda ${r.number}`}</b>
+                                )}
+                                <span className={"pill " + (completed === total && total > 0 ? "green" : completed > 0 ? "orange" : "")} >
+                                  {completed}/{total} completados
+                                </span>
+                                {r.isClassificatory && <span className="pill">Clasificatoria</span>}
+                              </div>
+                              <div className="toolbar" onClick={e => e.stopPropagation()}>
+                                {editingRoundName === idx ? (
+                                  <>
+                                    <button className="primary sm" onClick={() => renameRound(idx, roundNameTemp)}>✓ Guardar</button>
+                                    <button className="sm" onClick={() => setEditingRoundName(null)}>✕</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button className="sm" title="Renombrar" onClick={() => { setEditingRoundName(idx); setRoundNameTemp(r.name || `Ronda ${r.number}`); }}>✏️</button>
+                                    <button className="sm" title="Regenerar emparejamientos" onClick={() => regenerateRound(idx)}>🔄</button>
+                                    <button className="danger sm" title="Eliminar ronda" onClick={() => deleteRound(idx)}>🗑️ Borrar</button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     <div className="hr"></div>
 
-                    <h3 style={{ marginTop: 0 }}>Ronda {rounds[currentRound]?.number}</h3>
+                    {rounds[currentRound] && (
+                      <>
+                        <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: 10 }}>
+                          <h3 style={{ margin: 0 }}>{rounds[currentRound]?.name || `Ronda ${rounds[currentRound]?.number}`}</h3>
+                          <span className="muted small">Desempate: <b>{config.tiebreak}</b></span>
+                        </div>
 
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Mesa</th>
-                          <th>Sala</th>
-                          <th>A favor</th>
-                          <th>En contra</th>
-                          <th className="nowrap">Ítems (A / E)</th>
-                          <th className="nowrap">Votos (A / E)</th>
-                          <th>Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(rounds[currentRound]?.matches || []).map((m, idx) => {
-                          const favor = computedTeams.find((t) => t.id === m.aFavor);
-                          const contra = computedTeams.find((t) => t.id === m.enContra);
+                        {/* ===== TABLA DE ENFRENTAMIENTOS: layout card en móvil, tabla en desktop ===== */}
+                        <div>
+                          {/* Desktop */}
+                          <div className="table-wrap" style={{ display: "none" }} id="rounds-desktop-table">
+                          </div>
 
-                          return (
-                            <tr key={m.id}>
-                              <td className="nowrap">{idx + 1}</td>
-                              <td className="wrap">
-                                <div><b>{m.room?.name || "—"}</b></div>
-                                <div className="muted small">{m.room?.location || ""}</div>
-                                <div className="muted small">Jueces: {m.judges?.map((j) => j.name).join(", ") || "—"}</div>
-                              </td>
-                              <td className="wrap">
-                                {favor?.name || "—"}
-                                <div className="muted small">{favor?.school || ""}</div>
-                              </td>
-                              <td className="wrap">
-                                {contra?.name || "—"}
-                                <div className="muted small">{contra?.school || ""}</div>
-                              </td>
-                              <td className="nowrap">
-                                <input
-                                  type="number"
-                                  style={{ width: 90, display: "inline-block", marginRight: 8 }}
-                                  value={m.favorItems ?? ""}
-                                  onChange={(e) => updateMatch(currentRound, idx, { favorItems: e.target.value })}
-                                />
-                                /
-                                <input
-                                  type="number"
-                                  style={{ width: 90, display: "inline-block", marginLeft: 8 }}
-                                  value={m.contraItems ?? ""}
-                                  onChange={(e) => updateMatch(currentRound, idx, { contraItems: e.target.value })}
-                                />
-                              </td>
-                              <td className="nowrap">
-                                <input
-                                  type="number"
-                                  style={{ width: 90, display: "inline-block", marginRight: 8 }}
-                                  value={m.favorVotes ?? ""}
-                                  onChange={(e) => updateMatch(currentRound, idx, { favorVotes: e.target.value })}
-                                />
-                                /
-                                <input
-                                  type="number"
-                                  style={{ width: 90, display: "inline-block", marginLeft: 8 }}
-                                  value={m.contraVotes ?? ""}
-                                  onChange={(e) => updateMatch(currentRound, idx, { contraVotes: e.target.value })}
-                                />
-                              </td>
-                              <td>{m.completed ? <span className="pill">Completado</span> : <span className="pill">Pendiente</span>}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    <div className="muted small" style={{ marginTop: 10 }}>
-                      * El debate se marca “Completado” cuando hay ítems en ambos lados. Los votos son opcionales pero se usan si eliges desempates con “Votos”.
-                    </div>
+                          {/* Usamos un enfoque de cards responsive */}
+                          <div className="stack">
+                            {(rounds[currentRound]?.matches || []).map((m, idx) => {
+                              const favor = computedTeams.find(t => t.id === m.aFavor);
+                              const contra = computedTeams.find(t => t.id === m.enContra);
+                              return (
+                                <div key={m.id} style={{ border: "1px solid #eee", borderRadius: 10, padding: "12px 14px", background: "#fff" }}>
+                                  {/* Header del enfrentamiento */}
+                                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", flex: 1 }}>
+                                      <span className="muted small nowrap">Mesa {idx + 1}</span>
+                                      <b style={{ color: "#1a1a2e" }}>{favor?.name || "—"}</b>
+                                      <span className="muted small">{favor?.school || ""}</span>
+                                      <span className="vs-badge">A FAVOR</span>
+                                      <span className="muted">vs</span>
+                                      <span className="vs-badge" style={{ background: "#1d4ed8" }}>EN CONTRA</span>
+                                      <b style={{ color: "#1a1a2e" }}>{contra?.name || "—"}</b>
+                                      <span className="muted small">{contra?.school || ""}</span>
+                                    </div>
+                                    <div className="toolbar">
+                                      {m.completed ? <span className="pill green">✓ Completado</span> : <span className="pill orange">Pendiente</span>}
+                                      <button className="danger sm" title="Eliminar enfrentamiento" onClick={() => deleteMatch(currentRound, idx)}>🗑️</button>
+                                    </div>
+                                  </div>
+
+                                  {/* Sala y jueces */}
+                                  {(m.room || (m.judges && m.judges.length > 0)) && (
+                                    <div className="muted small" style={{ marginBottom: 10 }}>
+                                      {m.room && <span>🏫 {m.room.name}{m.room.location ? ` · ${m.room.location}` : ""}</span>}
+                                      {m.judges?.length > 0 && <span> · 🧑‍⚖️ {m.judges.map(j => j.name).join(", ")}</span>}
+                                    </div>
+                                  )}
+
+                                  {/* Inputs de resultado */}
+                                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                                    <div>
+                                      <div className="muted small" style={{ marginBottom: 4 }}>Ítems A favor / En contra</div>
+                                      <div className="score-pair">
+                                        <input type="number" className="score-pair input" style={{ width: 80 }}
+                                          value={m.favorItems ?? ""}
+                                          onChange={e => updateMatch(currentRound, idx, { favorItems: e.target.value })}
+                                          placeholder="A fav"
+                                        />
+                                        <span className="score-sep">/</span>
+                                        <input type="number" style={{ width: 80 }}
+                                          value={m.contraItems ?? ""}
+                                          onChange={e => updateMatch(currentRound, idx, { contraItems: e.target.value })}
+                                          placeholder="En c."
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="muted small" style={{ marginBottom: 4 }}>Votos A favor / En contra <span className="pill" style={{ fontSize: 10 }}>opcional</span></div>
+                                      <div className="score-pair">
+                                        <input type="number" style={{ width: 80 }}
+                                          value={m.favorVotes ?? ""}
+                                          onChange={e => updateMatch(currentRound, idx, { favorVotes: e.target.value })}
+                                          placeholder="A fav"
+                                        />
+                                        <span className="score-sep">/</span>
+                                        <input type="number" style={{ width: 80 }}
+                                          value={m.contraVotes ?? ""}
+                                          onChange={e => updateMatch(currentRound, idx, { contraVotes: e.target.value })}
+                                          placeholder="En c."
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="muted small" style={{ marginTop: 10 }}>
+                          * Se marca "Completado" cuando hay ítems en ambos lados. Los votos son opcionales (solo necesarios si el desempate incluye "Votos").
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
             )}
 
+            {/* ===== RANKING ===== */}
             {activeTab === "ranking" && (
               <div className="card">
                 <div className="toolbar" style={{ justifyContent: "space-between" }}>
                   <h2 style={{ margin: 0 }}>Clasificación</h2>
                   <button className="primary" onClick={exportStandings}>⬇️ Exportar Excel</button>
                 </div>
-
                 <div className="spacer"></div>
-
                 {computedTeams.length === 0 ? (
                   <div className="muted">Añade equipos primero.</div>
                 ) : (
                   <>
                     <h3 style={{ marginTop: 0 }}>Ranking de equipos</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Pos</th>
-                          <th>Equipo</th>
-                          <th>Institución</th>
-                          <th>Puntos</th>
-                          <th>Ítems</th>
-                          <th>Votos</th>
-                          <th className="nowrap">A / E</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {getStandings().map((t, idx) => (
-                          <tr key={t.id}>
-                            <td className="nowrap"><b>{idx + 1}</b></td>
-                            <td className="wrap">{t.name}</td>
-                            <td className="wrap muted">{t.school}</td>
-                            <td className="nowrap">{t.points}</td>
-                            <td className="nowrap">{t.itemsWon}</td>
-                            <td className="nowrap">{t.votesWon}</td>
-                            <td className="nowrap">{t.positions?.afavor || 0} / {t.positions?.enContra || 0}</td>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Pos</th><th>Equipo</th><th>Institución</th>
+                            <th>Pts</th><th>Ítems</th><th>Votos</th><th className="nowrap">A / E</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {getStandings().map((t, idx) => (
+                            <tr key={t.id}>
+                              <td className="nowrap"><b>{idx + 1}</b></td>
+                              <td className="wrap">{t.name}</td>
+                              <td className="wrap muted">{t.school}</td>
+                              <td className="nowrap"><b>{t.points}</b></td>
+                              <td className="nowrap">{t.itemsWon}</td>
+                              <td className="nowrap">{t.votesWon}</td>
+                              <td className="nowrap">{t.positions?.afavor || 0} / {t.positions?.enContra || 0}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
                     <div className="hr"></div>
-
-                    <h3 style={{ marginTop: 0 }}>Ranking de oradores (general y por rol)</h3>
-
-                    <div className="row cols2">
-                      <div>
-                        <label>Ver ranking por rol</label>
-                        <SpeakerRanking />
-                      </div>
-                      <div className="muted small">
-                        Los puntos de orador se editan en <b>👥 Equipos</b>.  
-                        Si quieres, en el siguiente paso podemos añadir “puntos por orador por ronda” (más automático).
-                      </div>
-                    </div>
+                    <h3 style={{ marginTop: 0 }}>Ranking de oradores</h3>
+                    <SpeakerRanking />
                   </>
                 )}
               </div>
             )}
 
-            <div className="card">
+            {/* Footer */}
+            <div className="card" style={{ padding: "10px 14px" }}>
               <div className="muted small">
-                ✅ Usuarios + torneos se guardan en <code>localStorage</code> (persisten de un día para otro).<br/>
-                📌 Lados del debate: <b>A favor</b> / <b>En contra</b>. · Oradores: <b>{config.speakersPerTeam}</b> por equipo.
+                💾 Datos guardados de forma persistente — accesibles desde cualquier dispositivo al iniciar sesión. · Oradores por equipo: <b>{config.speakersPerTeam}</b>.
               </div>
             </div>
           </div>
         );
 
-        // --- componente ranking oradores
+        // ===== SpeakerRanking component =====
         function SpeakerRanking() {
           const [role, setRole] = useState("TODOS");
           const ranking = getSpeakerRanking(role);
-
           return (
             <div>
-              <select value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="TODOS">Todos (general)</option>
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-              </select>
-
-              <div className="spacer"></div>
-
+              <div style={{ marginBottom: 10 }}>
+                <label>Filtrar por rol</label>
+                <select value={role} onChange={e => setRole(e.target.value)} style={{ maxWidth: 240 }}>
+                  <option value="TODOS">Todos (general)</option>
+                  {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
               {ranking.length === 0 ? (
                 <div className="muted">No hay oradores con nombre todavía.</div>
               ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Pos</th>
-                      <th>Orador</th>
-                      <th>Rol</th>
-                      <th>Equipo</th>
-                      <th>Institución</th>
-                      <th className="right">Puntos</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ranking.map((s, idx) => (
-                      <tr key={s.speakerId}>
-                        <td><b>{idx + 1}</b></td>
-                        <td className="wrap">{s.name}</td>
-                        <td className="nowrap">{s.role}</td>
-                        <td className="wrap">{s.teamName}</td>
-                        <td className="wrap muted">{s.school}</td>
-                        <td className="right nowrap"><b>{s.points}</b></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Pos</th><th>Orador</th><th>Rol</th><th>Equipo</th><th>Institución</th><th className="right">Puntos</th></tr>
+                    </thead>
+                    <tbody>
+                      {ranking.map((s, idx) => (
+                        <tr key={s.speakerId}>
+                          <td><b>{idx + 1}</b></td>
+                          <td className="wrap">{s.name}</td>
+                          <td className="nowrap">{s.role}</td>
+                          <td className="wrap">{s.teamName}</td>
+                          <td className="wrap muted">{s.school}</td>
+                          <td className="right nowrap"><b>{s.points}</b></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           );
