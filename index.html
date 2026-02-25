@@ -183,6 +183,7 @@
           setToast({title,msg}); clearTimeout(window.__tt);
           window.__tt = setTimeout(()=>setToast(null),ms);
         }
+
         // State
         const [cfg, setCfg] = useState({
           tournamentName:"",
@@ -193,9 +194,9 @@
           numGroups:4,
           groupSize:4,
           speakersPerTeam:2,
-          tiebreak:"Ítems > Enfrentamiento directo",
-          avoidSameInstitutionInGroups:true // ✅ opcional
+          tiebreak:"Ítems > Enfrentamiento directo"
         });
+
         const [teams, setTeams] = useState([]);
         const [rounds, setRounds] = useState([]);
         const [curRound, setCurRound] = useState(0);
@@ -316,8 +317,7 @@
             numGroups:4,
             groupSize:4,
             speakersPerTeam:2,
-            tiebreak:"Ítems > Enfrentamiento directo",
-            avoidSameInstitutionInGroups:true
+            tiebreak:"Ítems > Enfrentamiento directo"
           });
           setTeams([]);setRounds([]);setRooms([]);setJudges([]);setGroups([]);setCurRound(0);
         }
@@ -399,18 +399,182 @@
         }
         const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
 
-        // Pairings
+        // =========================
+        // ✅ GRUPOS: ROUND ROBIN FIJO + EVITAR INSTITUCIONES SIEMPRE
+        // =========================
+
+        function schoolKey(s){
+          const k = String(s||"").trim().toLowerCase();
+          return k || "__sin__";
+        }
+
+        function roundRobinSchedule(teamIds){
+          const list=[...teamIds];
+          if(list.length%2===1) list.push(null);
+          const n=list.length;
+          const roundsCount=n-1;
+          const half=n/2;
+          const arr=[...list];
+          const schedule=[];
+          for(let r=0;r<roundsCount;r++){
+            const pairs=[];
+            for(let i=0;i<half;i++){
+              const a=arr[i];
+              const b=arr[n-1-i];
+              if(a&&b)pairs.push([a,b]);
+            }
+            schedule.push(pairs);
+            const fixed=arr[0];
+            const rest=arr.slice(1);
+            rest.unshift(rest.pop());
+            arr.splice(0,arr.length,fixed,...rest);
+          }
+          return schedule;
+        }
+
+        function buildGroupsFixed(ts, numGroups){
+          const n=Math.max(1,Number(numGroups||1));
+          const gs=Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
+
+          // buckets por institución
+          const bySchool=new Map();
+          for(const t of ts){
+            const k=schoolKey(t.school);
+            if(!bySchool.has(k))bySchool.set(k,[]);
+            bySchool.get(k).push(t);
+          }
+
+          // ordenar instituciones por tamaño desc y barajar dentro
+          const buckets=Array.from(bySchool.values()).map(arr=>arr.sort(()=>Math.random()-.5));
+          buckets.sort((a,b)=>b.length-a.length);
+
+          // asignación greedy: siempre elegir grupo con menos miembros y que NO tenga esa institución
+          for(const bucket of buckets){
+            for(const team of bucket){
+              const k=schoolKey(team.school);
+              const candidates=gs
+                .filter(g=>{
+                  const members=g.teams.map(id=>ts.find(x=>x.id===id)).filter(Boolean);
+                  return !members.some(m=>schoolKey(m.school)===k);
+                })
+                .sort((a,b)=>a.teams.length-b.teams.length);
+
+              // Si no hay candidatos (caso imposible por números), avisamos y metemos en el menos lleno igualmente
+              let target=candidates[0];
+              if(!target){
+                target=[...gs].sort((a,b)=>a.teams.length-b.teams.length)[0];
+              }
+              target.teams.push(team.id);
+            }
+          }
+
+          for(const g of gs){
+            g.schedule=roundRobinSchedule(g.teams);
+          }
+          return gs;
+        }
+
+        function buildGroupRoundMatches(gs, ts, roundIndex){
+          const ms=[];
+          for(const g of gs){
+            const schedule=Array.isArray(g.schedule)?g.schedule:roundRobinSchedule(g.teams||[]);
+            if(!schedule.length) continue;
+            const pairs=schedule[roundIndex % schedule.length] || [];
+            for(const [aId,bId] of pairs){
+              const t1=ts.find(t=>t.id===aId);
+              const t2=ts.find(t=>t.id===bId);
+              if(!t1||!t2) continue;
+              const f=(t1.positions?.afavor||0) <= (t1.positions?.enContra||0);
+              ms.push({
+                id:uid(),
+                aFavor:f?t1.id:t2.id,
+                enContra:f?t2.id:t1.id,
+                favorItems:null,contraItems:null,favorVotes:null,contraVotes:null,
+                completed:false,
+                groupId:g.id
+              });
+            }
+          }
+          // una ronda normal empareja aprox N/2 matches; aquí ya salen exactos por calendario
+          return ms;
+        }
+
+        // Recalcula groups (teams + schedule) desde teams[].groupId
+        function rebuildGroupsFromTeams(nextTeams, baseGroups){
+          const n=Math.max(1,Number(cfg.numGroups||1));
+          const base = (baseGroups && baseGroups.length) ? baseGroups : Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
+
+          const gs=base.map(g=>({id:g.id,name:g.name,teams:[],schedule:[]}));
+          for(const t of nextTeams){
+            if(!t.groupId) continue;
+            const g=gs.find(x=>x.id===t.groupId);
+            if(g) g.teams.push(t.id);
+          }
+          for(const g of gs){
+            g.schedule=roundRobinSchedule(g.teams);
+          }
+          setGroups(gs);
+        }
+
+        function ensureGroupsExist(){
+          const n=Math.max(1,Number(cfg.numGroups||1));
+          if(groups.length===n) return groups;
+          const gs=Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
+          setGroups(gs);
+          return gs;
+        }
+
+        // Validación: NO permitir instituciones repetidas dentro de un grupo (SIEMPRE)
+        function canPlaceTeamInGroup(teamId, groupId, nextTeams){
+          if(!groupId) return true;
+          const team = nextTeams.find(t=>t.id===teamId);
+          if(!team) return false;
+          const k = schoolKey(team.school);
+          // si no tiene institución, lo dejamos (no puede colisionar)
+          if(k==="__sin__") return true;
+
+          const members = nextTeams.filter(t=>t.groupId===groupId && t.id!==teamId);
+          return !members.some(m=>schoolKey(m.school)===k);
+        }
+
+        // Cambiar grupo manualmente (bloqueando si rompe instituciones)
+        function setTeamGroup(teamId, newGroupId){
+          const base = ensureGroupsExist();
+
+          setTeams(prev=>{
+            const next = prev.map(t=>t.id===teamId?{...t,groupId:newGroupId||null}:t);
+
+            if(newGroupId && !canPlaceTeamInGroup(teamId, newGroupId, next)){
+              alert("❌ No se puede: ya hay un equipo de la misma institución en ese grupo.");
+              return prev;
+            }
+
+            // Si hay rondas, las borramos para evitar emparejamientos incoherentes
+            if(rounds.length>0){
+              setRounds([]);
+              setCurRound(0);
+              showToast("ℹ️ Rondas reiniciadas","Al cambiar grupos, se borraron las rondas para evitar incoherencias.");
+            }
+
+            // reconstruir groups y schedules
+            setTimeout(()=>rebuildGroupsFromTeams(next, base), 0);
+            return next;
+          });
+        }
+
+        // Generación de emparejamientos
         function genPairings(){
-          if(teams.length<2)return alert("Necesitas al menos 2 equipos");
+          if(teams.length<2) return alert("Necesitas al menos 2 equipos");
           let ms=[];
-          if(cfg.tournamentSystem==="suizo")ms=genSwiss();
-          else if(cfg.tournamentSystem==="aleatorio")ms=genRandom();
-          else ms=genGroups(); // ✅ grupos corregido
+          if(cfg.tournamentSystem==="suizo") ms=genSwiss();
+          else if(cfg.tournamentSystem==="aleatorio") ms=genRandom();
+          else ms=genGroups(); // grupos
           ms=assignRJ(ms);
           const nr={number:rounds.length+1,name:`Ronda ${rounds.length+1}`,matches:ms,isClassificatory:rounds.length<Number(cfg.roundsClasif||0)};
           const newRounds=[...rounds,nr];
           setRounds(newRounds);setCurRound(newRounds.length-1);setTab("rondas");
         }
+
         function genSwiss(){
           const sorted=[...computed].sort(cmp);const ms=[];const paired=new Set();
           for(let i=0;i<sorted.length;i++){
@@ -437,137 +601,29 @@
           return ms;
         }
 
-        // =========================
-        // ✅ GRUPOS (FIX REAL)
-        // =========================
-        function roundRobinSchedule(teamIds){
-          const list = [...teamIds];
-          const hasBye = list.length % 2 === 1;
-          if (hasBye) list.push(null);
-
-          const n = list.length;
-          const roundsCount = n - 1;
-          const half = n / 2;
-
-          const arr = [...list];
-          const schedule = [];
-
-          for (let r = 0; r < roundsCount; r++) {
-            const pairs = [];
-            for (let i = 0; i < half; i++) {
-              const a = arr[i];
-              const b = arr[n - 1 - i];
-              if (a && b) pairs.push([a, b]);
-            }
-            schedule.push(pairs);
-
-            const fixed = arr[0];
-            const rest = arr.slice(1);
-            rest.unshift(rest.pop());
-            arr.splice(0, arr.length, fixed, ...rest);
-          }
-          return schedule;
-        }
-
-        function buildGroupsFixed(ts, numGroups, avoidSameInstitution){
-          const n = Math.max(1, Number(numGroups || 1));
-          const gs = Array.from({length:n},(_,i)=>({
-            id: i+1,
-            name: `Grupo ${String.fromCharCode(65+i)}`,
-            teams: [],
-            schedule: []
-          }));
-
-          // agrupar por institución
-          const bySchool = new Map();
-          for (const t of ts) {
-            const key = (t.school || "").trim().toLowerCase() || "__sin__";
-            if (!bySchool.has(key)) bySchool.set(key, []);
-            bySchool.get(key).push(t);
-          }
-
-          // barajar buckets y ordenar por tamaño desc
-          const buckets = Array.from(bySchool.values()).map(arr => arr.sort(()=>Math.random()-.5));
-          buckets.sort((a,b)=>b.length-a.length);
-
-          for (const bucket of buckets) {
-            for (const team of bucket) {
-              let best = null;
-
-              if (avoidSameInstitution) {
-                const schoolKey = (team.school || "").trim().toLowerCase() || "__sin__";
-                const candidates = gs
-                  .filter(g => !g.teams
-                    .map(id=>ts.find(x=>x.id===id))
-                    .some(x => ((x?.school||"").trim().toLowerCase()||"__sin__") === schoolKey)
-                  )
-                  .sort((a,b)=>a.teams.length-b.teams.length);
-
-                best = candidates[0] || null;
-              }
-
-              if (!best) best = [...gs].sort((a,b)=>a.teams.length-b.teams.length)[0];
-              best.teams.push(team.id);
-            }
-          }
-
-          for (const g of gs) {
-            g.schedule = roundRobinSchedule(g.teams);
-          }
-          return gs;
-        }
-
-        function buildGroupRoundMatches(gs, ts, roundIndex){
-          const ms = [];
-          for (const g of gs) {
-            const schedule = Array.isArray(g.schedule) ? g.schedule : roundRobinSchedule(g.teams || []);
-            if (!schedule.length) continue;
-
-            const pairs = schedule[roundIndex % schedule.length] || [];
-            for (const [aId, bId] of pairs) {
-              const t1 = ts.find(t=>t.id===aId);
-              const t2 = ts.find(t=>t.id===bId);
-              if (!t1 || !t2) continue;
-
-              const f = (t1.positions?.afavor||0) <= (t1.positions?.enContra||0);
-              ms.push({
-                id: uid(),
-                aFavor: f ? t1.id : t2.id,
-                enContra: f ? t2.id : t1.id,
-                favorItems: null,
-                contraItems: null,
-                favorVotes: null,
-                contraVotes: null,
-                completed: false,
-                groupId: g.id
-              });
-            }
-          }
-          return ms;
-        }
-
+        // ✅ GRUPOS: si no existen, crear (evitando instituciones SIEMPRE); luego usar calendario fijo por rondas
         function genGroups(){
+          const n=Math.max(1,Number(cfg.numGroups||1));
           if(rounds.length===0 && groups.length===0){
-            const shuffled = [...teams].sort(()=>Math.random()-.5);
-            const ng = buildGroupsFixed(
-              shuffled,
-              cfg.numGroups,
-              !!cfg.avoidSameInstitutionInGroups
-            );
+            const shuffled=[...teams].sort(()=>Math.random()-.5);
 
-            const t2 = shuffled.map(t=>{
-              const g = ng.find(x => x.teams.includes(t.id));
-              return {...t, groupId: g?.id ?? null};
+            // crear grupos evitando instituciones
+            const ng=buildGroupsFixed(shuffled, n);
+
+            // asignar groupId a equipos
+            const t2=shuffled.map(t=>{
+              const g=ng.find(x=>x.teams.includes(t.id));
+              return {...t, groupId:g?.id ?? null};
             });
 
             setGroups(ng);
             setTeams(t2);
 
-            // OJO: setState es async, por eso devolvemos con locales
-            return buildGroupRoundMatches(ng, t2, rounds.length);
+            // construir matches para la ronda 0
+            return buildGroupRoundMatches(ng, t2, 0);
           }
 
-          // si ya existen, se usan fijos
+          // si hay groups ya, usar los actuales y su calendario
           return buildGroupRoundMatches(groups, teams, rounds.length);
         }
 
@@ -670,7 +726,7 @@
                   <Tab id="config">⚙️ Config</Tab>
                   <Tab id="equipos">👥 Equipos</Tab>
 
-                  {/* ✅ SOLO EN MODO GRUPOS */}
+                  {/* ✅ SOLO SI ESTÁS EN MODO GRUPOS */}
                   {cfg.tournamentSystem==="grupos" && <Tab id="grupos">📦 Grupos</Tab>}
 
                   <Tab id="salas">🏫 Salas</Tab>
@@ -740,19 +796,17 @@
                         const next = e.target.value;
                         setCfg({...cfg,tournamentSystem:next});
 
-                        // Si sales de "grupos", ocultas pestaña y limpias grupos/ids
+                        // si sales de grupos, limpiar groups y groupId
                         if(next!=="grupos"){
                           setGroups([]);
-                          setTeams(prev=>prev.map(t=>{
-                            const nt={...t};
-                            delete nt.groupId;
-                            return nt;
-                          }));
+                          setTeams(prev=>prev.map(t=>{ const nt={...t}; delete nt.groupId; return nt; }));
                           if(tab==="grupos") setTab("config");
                         }
                       }}
                     >
-                      <option value="suizo">Suizo</option><option value="aleatorio">Aleatorio</option><option value="grupos">Grupos</option>
+                      <option value="suizo">Suizo</option>
+                      <option value="aleatorio">Aleatorio</option>
+                      <option value="grupos">Grupos</option>
                     </select>
                   </div>
 
@@ -775,18 +829,27 @@
                   </div>
 
                   {cfg.tournamentSystem==="grupos"&&<>
-                    <div><label>Nº de grupos</label><input type="number" value={cfg.numGroups} onChange={e=>setCfg({...cfg,numGroups:Number(e.target.value)})}/></div>
-                    <div><label>Tamaño grupo</label><input type="number" value={cfg.groupSize} onChange={e=>setCfg({...cfg,groupSize:Number(e.target.value)})}/></div>
+                    <div><label>Nº de grupos</label><input type="number" value={cfg.numGroups} onChange={e=>{
+                      const v=Math.max(1,Number(e.target.value||1));
+                      setCfg({...cfg,numGroups:v});
+                      // si cambias numGroups, mejor reiniciar grupos y rondas
+                      setGroups([]);
+                      setTeams(prev=>prev.map(t=>{ const nt={...t}; delete nt.groupId; return nt; }));
+                      setRounds([]); setCurRound(0);
+                      showToast("ℹ️ Grupos reiniciados","Cambiando el número de grupos se reinició la fase de grupos (equipos sin asignar).");
+                    }}/></div>
 
-                    <div style={{gridColumn:"span 2"}}>
-                      <label>Evitar equipos de la misma institución en el mismo grupo (opcional)</label>
-                      <select value={String(cfg.avoidSameInstitutionInGroups)} onChange={e=>setCfg({...cfg,avoidSameInstitutionInGroups:e.target.value==="true"})}>
-                        <option value="true">Sí (intentar evitar)</option>
-                        <option value="false">No</option>
-                      </select>
+                    <div><label>Tamaño grupo (solo informativo)</label><input type="number" value={cfg.groupSize} onChange={e=>setCfg({...cfg,groupSize:Number(e.target.value)})}/></div>
+
+                    <div style={{gridColumn:"span 3"}} className="toast">
+                      <b>Regla activa:</b> siempre se evita que dos equipos de la misma institución estén en el mismo grupo.
+                      <div className="muted small" style={{marginTop:6}}>
+                        Si el número de equipos de una institución es mayor que el número de grupos, será imposible evitarlo en todos los casos.
+                      </div>
                     </div>
                   </>}
                 </div>
+
                 <div className="hr"></div>
                 <div className="toolbar" style={{justifyContent:"flex-end"}}>
                   <button className="primary" onClick={genPairings} disabled={computed.length<2}>🧩 Generar emparejamientos (nueva ronda)</button>
@@ -830,66 +893,143 @@
               </div>
             )}
 
-            {/* ✅ GRUPOS (NUEVA PESTAÑA) */}
+            {/* ✅ GRUPOS: EDITABLES MANUALMENTE, PERO SIEMPRE EVITANDO INSTITUCIONES */}
             {tab==="grupos" && cfg.tournamentSystem==="grupos" && (
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
                   <h2 style={{margin:0}}>Grupos</h2>
                   <div className="toolbar">
-                    <span className="muted small">
-                      {groups.length ? `Total grupos: ${groups.length}` : "Aún no se han creado grupos"}
-                    </span>
                     <button
                       className="sm"
                       onClick={()=>{
-                        if(!confirm("Esto borrará los grupos actuales. ¿Continuar?")) return;
-                        setGroups([]);
-                        setTeams(prev=>prev.map(t=>{ const nt={...t}; delete nt.groupId; return nt; }));
-                        showToast("📦 Grupos reiniciados","Genera una nueva ronda en modo Grupos para crearlos de nuevo.");
+                        if(teams.length<2) return alert("Añade equipos primero.");
+                        // crear asignación automática respetando instituciones SIEMPRE
+                        const shuffled=[...teams].sort(()=>Math.random()-.5);
+                        const ng=buildGroupsFixed(shuffled, cfg.numGroups);
+                        const t2=shuffled.map(t=>{
+                          const g=ng.find(x=>x.teams.includes(t.id));
+                          return {...t, groupId:g?.id ?? null};
+                        });
+                        setTeams(t2);
+                        setGroups(ng);
+                        // reset rondas para coherencia
+                        if(rounds.length>0){
+                          setRounds([]); setCurRound(0);
+                          showToast("ℹ️ Rondas reiniciadas","Al regenerar grupos, se borraron las rondas.");
+                        }
+                        showToast("✅ Grupos generados","Puedes editar manualmente sin romper la regla de instituciones.");
                       }}
-                      disabled={groups.length===0}
                     >
-                      🔁 Regenerar grupos
+                      🎲 Generar grupos automático
+                    </button>
+
+                    <button
+                      className="sm"
+                      onClick={()=>{
+                        if(!confirm("Esto quitará a todos los equipos de los grupos y borrará rondas. ¿Continuar?")) return;
+                        const next=teams.map(t=>{ const nt={...t}; delete nt.groupId; return nt; });
+                        setTeams(next);
+                        setGroups([]);
+                        setRounds([]); setCurRound(0);
+                        showToast("🧹 Grupos vaciados","Ahora puedes volver a asignar equipos manualmente o regenerar.");
+                      }}
+                    >
+                      🧹 Vaciar
                     </button>
                   </div>
                 </div>
 
                 <div className="spacer"></div>
 
-                {groups.length===0 ? (
-                  <div className="muted">
-                    No hay grupos creados todavía. Ve a <b>⚙️ Config</b>, elige <b>Grupos</b> y pulsa <b>🧩 Generar emparejamientos</b> para crearlos.
+                <div className="toast" style={{marginBottom:12}}>
+                  <b>Regla obligatoria:</b> no se permite mover un equipo a un grupo donde ya exista un equipo de la misma institución.
+                </div>
+
+                <div className="card" style={{padding:14}}>
+                  <h3 style={{marginTop:0}}>Asignación manual</h3>
+                  <div className="muted small" style={{marginBottom:10}}>
+                    Si cambias asignaciones, se reinician las rondas automáticamente para evitar emparejamientos incoherentes.
                   </div>
+
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Equipo</th>
+                          <th>Institución</th>
+                          <th style={{width:240}}>Grupo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {teams.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""))).map(t=>(
+                          <tr key={t.id}>
+                            <td className="wrap"><b>{t.name||"—"}</b></td>
+                            <td className="wrap muted">{t.school||"—"}</td>
+                            <td>
+                              <select
+                                value={String(t.groupId||"")}
+                                onChange={e=>{
+                                  const val=e.target.value?Number(e.target.value):null;
+                                  setTeamGroup(t.id, val);
+                                }}
+                              >
+                                <option value="">(Sin grupo)</option>
+                                {ensureGroupsExist().map(g=>(
+                                  <option key={g.id} value={String(g.id)}>{g.name}</option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="hr"></div>
+
+                <div className="toolbar" style={{justifyContent:"space-between"}}>
+                  <h3 style={{margin:0}}>Vista de grupos</h3>
+                  <button
+                    className="sm"
+                    onClick={()=>{
+                      const base=ensureGroupsExist();
+                      rebuildGroupsFromTeams(teams, base);
+                      showToast("🔄 Actualizado","Se recalculó el calendario interno de cada grupo.");
+                    }}
+                  >
+                    🔄 Recalcular calendario
+                  </button>
+                </div>
+
+                <div className="spacer"></div>
+
+                {groups.length===0 ? (
+                  <div className="muted">Aún no hay grupos creados. Pulsa “🎲 Generar grupos automático” o asigna equipos manualmente (se crearán grupos al cambiar un equipo).</div>
                 ) : (
                   <div className="row cols2">
                     {groups.map(g=>{
-                      const gTeams = teams
-                        .filter(t=>t.groupId===g.id)
-                        .sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+                      const gTeams=teams.filter(t=>t.groupId===g.id).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
                       return (
                         <div key={g.id} className="card" style={{padding:14}}>
                           <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
                             <div>
                               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                                <h3 style={{margin:"0 0 4px 0"}}>{g.name || `Grupo ${g.id}`}</h3>
+                                <h3 style={{margin:"0 0 4px 0"}}>{g.name}</h3>
                                 <span className="pill">{gTeams.length} equipos</span>
                               </div>
-                              <div className="muted small">
-                                {cfg.avoidSameInstitutionInGroups ? "Separación por institución: activada (si es posible)" : "Separación por institución: desactivada"}
-                              </div>
+                              <div className="muted small">Calendario interno: {Array.isArray(g.schedule)?g.schedule.length:0} rondas</div>
                             </div>
                           </div>
 
                           <div className="hr"></div>
 
                           {gTeams.length===0 ? (
-                            <div className="muted">No hay equipos asignados a este grupo.</div>
+                            <div className="muted">Sin equipos.</div>
                           ) : (
                             <div className="table-wrap">
                               <table>
-                                <thead>
-                                  <tr><th>Equipo</th><th>Institución</th></tr>
-                                </thead>
+                                <thead><tr><th>Equipo</th><th>Institución</th></tr></thead>
                                 <tbody>
                                   {gTeams.map(t=>(
                                     <tr key={t.id}>
@@ -902,20 +1042,17 @@
                             </div>
                           )}
 
-                          {/* (Opcional) ver calendario interno */}
                           {Array.isArray(g.schedule) && g.schedule.length>0 && (
                             <>
                               <div className="hr"></div>
-                              <div className="muted small" style={{marginBottom:6}}>
-                                Calendario interno: {g.schedule.length} rondas
-                              </div>
+                              <div className="muted small" style={{marginBottom:6}}><b>Calendario (round-robin)</b></div>
                               <div className="muted small">
                                 {g.schedule.map((pairs,ri)=>(
                                   <div key={ri} style={{marginBottom:4}}>
                                     <b>Ronda {ri+1}:</b>{" "}
                                     {pairs.map(([a,b],pi)=>{
-                                      const A = teams.find(x=>x.id===a);
-                                      const B = teams.find(x=>x.id===b);
+                                      const A=teams.find(x=>x.id===a);
+                                      const B=teams.find(x=>x.id===b);
                                       return (
                                         <span key={pi}>
                                           {(A?.name||"—")} vs {(B?.name||"—")}
