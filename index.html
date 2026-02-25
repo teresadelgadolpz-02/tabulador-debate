@@ -575,7 +575,9 @@
           });
         }
 
-        // Stats
+        // ====== CAMBIO CLAVE: NO HAY 3 PUNTOS ======
+        // "Gana el que tenga más ítems": usamos "points" como TOTAL DE ÍTEMS (para seguir mostrando una columna principal).
+        // (El desempate sigue siendo el que elijas en cfg.tiebreak: Ítems / Enfrentamiento directo / Votos.)
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
           const map=new Map();
@@ -608,14 +610,18 @@
             const Con = map.get(m.enContra);
             if(!Fav || !Con) continue;
 
+            // ÍTEMS acumulados (esto define el "ganador" de facto)
             if(Number.isFinite(aI)) Fav.itemsWon+=aI;
             if(Number.isFinite(bI)) Con.itemsWon+=bI;
+
+            // Votos acumulados (opcional)
             if(Number.isFinite(aV)) Fav.votesWon+=aV;
             if(Number.isFinite(bV)) Con.votesWon+=bV;
+          }
 
-            if(aI>bI){Fav.points+=3;}
-            else if(bI>aI){Con.points+=3;}
-            else {Fav.points+=1; Con.points+=1;}
+          // "points" = ítems totales (para columna principal)
+          for(const t of map.values()){
+            t.points = Number(t.itemsWon || 0);
           }
 
           return Array.from(map.values());
@@ -631,19 +637,23 @@
             const aI=Number(m.favorItems),bI=Number(m.contraItems);
             if(!Number.isFinite(aI)||!Number.isFinite(bI)) return 0;
 
+            // el que tenga más ítems gana el enfrentamiento directo
             if(m.aFavor===Aid) return aI>bI?1:aI<bI?-1:0;
             else return bI>aI?1:bI<aI?-1:0;
           }
           return 0;
         }
+
         function cmp(a,b){
-          if(b.points!==a.points)return b.points-a.points;
+          // Por defecto, el "points" ya son Ítems totales, así que esto ordena por ítems.
+          if(b.points!==a.points) return b.points-a.points;
+
           for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
             let v=0;
-            if(p==="Ítems")v=b.itemsWon-a.itemsWon;
-            else if(p==="Votos")v=b.votesWon-a.votesWon;
-            else if(p==="Enfrentamiento directo")v=h2h(a.id,b.id)*-1;
-            if(v!==0)return v;
+            if(p==="Ítems") v = b.itemsWon - a.itemsWon;
+            else if(p==="Votos") v = b.votesWon - a.votesWon;
+            else if(p==="Enfrentamiento directo") v = h2h(a.id,b.id) * -1;
+            if(v!==0) return v;
           }
           return String(a.name||"").localeCompare(String(b.name||""));
         }
@@ -797,16 +807,15 @@
             "Posición":i+1,
             "Equipo":t.name,
             "Institución":t.school,
-            "Puntos":t.points,
-            "Ítems":t.itemsWon,
-            "Votos":t.votesWon,
+            "Ítems (total)":t.itemsWon,
+            "Votos (total)":t.votesWon,
             "A favor":t.positions?.afavor||0,
             "En contra":t.positions?.enContra||0,
             "Oradores":(t.speakers||[]).map(s=>`${s.name||"-"} (${s.role||"-"})`).join(", ")
           })),"Clasificación","clasificacion.xlsx");
         }
 
-        // PDF
+        // ===== PDF helpers =====
         function safeFileName(x){
           return String(x||"").replace(/[^\w\d\- ]+/g,"").trim().replace(/\s+/g,"_") || "archivo";
         }
@@ -834,6 +843,7 @@
             img.src = url;
           });
         }
+
         async function exportRoundPDF(roundIndex){
           const r = rounds[roundIndex];
           if(!r) return;
@@ -883,7 +893,6 @@
 
             const sala = m.room?.name ? `${m.room.name}${m.room.location?` · ${m.room.location}`:""}` : "—";
             const jueces = (m.judges||[]).length ? (m.judges||[]).map(j=>j.name).join(", ") : "—";
-
             return [`Mesa ${i+1}`, enfrentamiento, sala, jueces];
           });
 
@@ -905,6 +914,99 @@
           const safeName = safeFileName(cfg.tournamentName || "torneo");
           const safeRound = safeFileName(r.name || `ronda_${r.number}`);
           doc.save(`${safeName}_${safeRound}.pdf`);
+        }
+
+        // ===== NUEVO: PDF del Ranking (por grupos + global) =====
+        async function exportRankingPDF(){
+          if(!computed.length) return alert("No hay datos para exportar.");
+
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({ unit:"pt", format:"a4" });
+          const margin = 40;
+          const pageW = doc.internal.pageSize.getWidth();
+          const pageH = doc.internal.pageSize.getHeight();
+
+          const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
+
+          function header(title){
+            doc.setFont("helvetica","bold");
+            doc.setFontSize(16);
+            doc.text(cfg.tournamentName || "Torneo", margin, 50);
+
+            doc.setFont("helvetica","normal");
+            doc.setFontSize(12);
+            doc.text(title, margin, 72);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generado: ${new Date().toLocaleString()}`, margin, 88);
+            doc.setTextColor(0);
+
+            if(logoDataUrl){
+              try{
+                const maxH=36, maxW=120;
+                doc.addImage(logoDataUrl, logoDataUrl.includes("image/png")?"PNG":"JPEG", pageW - margin - maxW, 34, maxW, maxH);
+              }catch(e){}
+            }
+          }
+
+          // 1) Ranking global
+          header("Ranking global (por ítems)");
+          const globalRows = standings.map((t,i)=>[
+            String(i+1),
+            t.name || "—",
+            t.school || "—",
+            String(t.itemsWon || 0),
+            String(t.votesWon || 0),
+            `${t.positions?.afavor||0}/${t.positions?.enContra||0}`
+          ]);
+
+          doc.autoTable({
+            startY: 110,
+            head: [["Pos","Equipo","Institución","Ítems","Votos","A/E"]],
+            body: globalRows,
+            styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
+            headStyles: { fillColor: [147, 2, 3], textColor: 255 },
+            margin: { left: margin, right: margin }
+          });
+
+          // 2) Si es grupos, añadir ranking por grupos (cada grupo en páginas/segmentos)
+          if(cfg.tournamentSystem==="grupos"){
+            const gs = (groups.length ? groups : ensureGroupsExist());
+            for(const g of gs){
+              doc.addPage();
+              header(`Ranking del ${g.name} (por ítems)`);
+
+              const ids = teams.filter(t=>t.groupId===g.id).map(t=>t.id);
+              const gStand = standings.filter(t=>ids.includes(t.id)).slice().sort(cmp);
+
+              const gRows = gStand.map((t,i)=>[
+                String(i+1),
+                t.name || "—",
+                t.school || "—",
+                String(t.itemsWon || 0),
+                String(t.votesWon || 0),
+                `${t.positions?.afavor||0}/${t.positions?.enContra||0}`
+              ]);
+
+              doc.autoTable({
+                startY: 110,
+                head: [["Pos","Equipo","Institución","Ítems","Votos","A/E"]],
+                body: gRows.length ? gRows : [["—","Sin equipos","—","0","0","0/0"]],
+                styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
+                headStyles: { fillColor: [147, 2, 3], textColor: 255 },
+                margin: { left: margin, right: margin }
+              });
+            }
+          }
+
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 30);
+          doc.setTextColor(0);
+
+          const safeName = safeFileName(cfg.tournamentName || "torneo");
+          doc.save(`${safeName}_ranking.pdf`);
         }
 
         function Tab({id,children}){
@@ -1510,7 +1612,10 @@
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
                   <h2 style={{margin:0}}>Clasificación</h2>
-                  <button className="primary" onClick={exportStandings}>⬇️ Exportar Excel</button>
+                  <div className="toolbar">
+                    <button className="sm" onClick={exportRankingPDF}>📄 PDF (ranking)</button>
+                    <button className="primary" onClick={exportStandings}>⬇️ Exportar Excel</button>
+                  </div>
                 </div>
 
                 <div className="spacer"></div>
@@ -1522,12 +1627,13 @@
                     {cfg.tournamentSystem==="grupos" ? (
                       <>
                         <div className="toast" style={{marginBottom:12}}>
-                          <b>Ranking por grupos</b>
+                          <b>Ranking por grupos + ranking global</b>
                           <div className="muted small" style={{marginTop:6}}>
-                            La clasificación se muestra separada por cada grupo (con el mismo criterio de desempate).
+                            El ranking está basado en <b>Ítems totales</b>. El desempate se aplica según: <b>{cfg.tiebreak}</b>.
                           </div>
                         </div>
 
+                        <h3 style={{marginTop:0}}>Ranking por grupos</h3>
                         <div className="row cols2">
                           {(groups.length ? groups : ensureGroupsExist()).map(g=>{
                             const ids = teams.filter(t=>t.groupId===g.id).map(t=>t.id);
@@ -1544,15 +1650,14 @@
                                 ) : (
                                   <div className="table-wrap">
                                     <table>
-                                      <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Pts</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                                      <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
                                       <tbody>
                                         {gStand.map((t,i)=>(
                                           <tr key={t.id}>
                                             <td><b>{i+1}</b></td>
                                             <td className="wrap">{t.name}</td>
                                             <td className="wrap muted">{t.school}</td>
-                                            <td><b>{t.points}</b></td>
-                                            <td>{t.itemsWon}</td>
+                                            <td><b>{t.itemsWon}</b></td>
                                             <td>{t.votesWon}</td>
                                             <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
                                           </tr>
@@ -1568,21 +1673,43 @@
 
                         <div className="hr"></div>
 
-                        <h3 style={{marginTop:0}}>Ranking de oradores (general)</h3>
-                        <SpeakerRanking computed={computed}/>
-                      </>
-                    ) : (
-                      <>
-                        <h3 style={{marginTop:0}}>Ranking de equipos</h3>
+                        <h3 style={{marginTop:0}}>Ranking global</h3>
                         <div className="table-wrap"><table>
-                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Pts</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
                           <tbody>{standings.map((t,i)=>(
                             <tr key={t.id}>
                               <td><b>{i+1}</b></td>
                               <td className="wrap">{t.name}</td>
                               <td className="wrap muted">{t.school}</td>
-                              <td><b>{t.points}</b></td>
-                              <td>{t.itemsWon}</td>
+                              <td><b>{t.itemsWon}</b></td>
+                              <td>{t.votesWon}</td>
+                              <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table></div>
+
+                        <div className="hr"></div>
+                        <h3>Ranking de oradores (general)</h3>
+                        <SpeakerRanking computed={computed}/>
+                      </>
+                    ) : (
+                      <>
+                        <div className="toast" style={{marginBottom:12}}>
+                          <b>Ranking global</b>
+                          <div className="muted small" style={{marginTop:6}}>
+                            El ranking está basado en <b>Ítems totales</b>. El desempate se aplica según: <b>{cfg.tiebreak}</b>.
+                          </div>
+                        </div>
+
+                        <h3 style={{marginTop:0}}>Ranking de equipos</h3>
+                        <div className="table-wrap"><table>
+                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                          <tbody>{standings.map((t,i)=>(
+                            <tr key={t.id}>
+                              <td><b>{i+1}</b></td>
+                              <td className="wrap">{t.name}</td>
+                              <td className="wrap muted">{t.school}</td>
+                              <td><b>{t.itemsWon}</b></td>
                               <td>{t.votesWon}</td>
                               <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
                             </tr>
