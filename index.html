@@ -577,7 +577,6 @@
 
         // ====== CAMBIO CLAVE: NO HAY 3 PUNTOS ======
         // "Gana el que tenga más ítems": usamos "points" como TOTAL DE ÍTEMS (para seguir mostrando una columna principal).
-        // (El desempate sigue siendo el que elijas en cfg.tiebreak: Ítems / Enfrentamiento directo / Votos.)
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
           const map=new Map();
@@ -610,16 +609,13 @@
             const Con = map.get(m.enContra);
             if(!Fav || !Con) continue;
 
-            // ÍTEMS acumulados (esto define el "ganador" de facto)
             if(Number.isFinite(aI)) Fav.itemsWon+=aI;
             if(Number.isFinite(bI)) Con.itemsWon+=bI;
 
-            // Votos acumulados (opcional)
             if(Number.isFinite(aV)) Fav.votesWon+=aV;
             if(Number.isFinite(bV)) Con.votesWon+=bV;
           }
 
-          // "points" = ítems totales (para columna principal)
           for(const t of map.values()){
             t.points = Number(t.itemsWon || 0);
           }
@@ -637,7 +633,6 @@
             const aI=Number(m.favorItems),bI=Number(m.contraItems);
             if(!Number.isFinite(aI)||!Number.isFinite(bI)) return 0;
 
-            // el que tenga más ítems gana el enfrentamiento directo
             if(m.aFavor===Aid) return aI>bI?1:aI<bI?-1:0;
             else return bI>aI?1:bI<aI?-1:0;
           }
@@ -645,7 +640,6 @@
         }
 
         function cmp(a,b){
-          // Por defecto, el "points" ya son Ítems totales, así que esto ordena por ítems.
           if(b.points!==a.points) return b.points-a.points;
 
           for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
@@ -844,36 +838,48 @@
           });
         }
 
+        // =========================================================
+        // ✅ PDF A4 HORIZONTAL (LANDSCAPE) + autoTable ajustado
+        // =========================================================
         async function exportRoundPDF(roundIndex){
           const r = rounds[roundIndex];
           if(!r) return;
 
           const { jsPDF } = window.jspdf;
-          const doc = new jsPDF({ unit:"pt", format:"a4" });
 
-          const margin = 40;
+          // A4 horizontal:
+          const doc = new jsPDF({ orientation:"landscape", unit:"pt", format:"a4" });
+
+          const margin = 36;
           const pageW = doc.internal.pageSize.getWidth();
           const pageH = doc.internal.pageSize.getHeight();
 
           doc.setFont("helvetica","bold");
           doc.setFontSize(16);
-          doc.text(cfg.tournamentName || "Torneo", margin, 50);
+          doc.text(cfg.tournamentName || "Torneo", margin, 42);
 
           doc.setFont("helvetica","normal");
           doc.setFontSize(12);
-          doc.text(r.name || `Ronda ${r.number}`, margin, 72);
+          doc.text(r.name || `Ronda ${r.number}`, margin, 62);
 
           const created = new Date().toLocaleString();
           doc.setFontSize(10);
           doc.setTextColor(100);
-          doc.text(`Generado: ${created}`, margin, 88);
+          doc.text(`Generado: ${created}`, margin, 78);
           doc.setTextColor(0);
 
           const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
           if(logoDataUrl){
             try{
-              const maxH = 36, maxW = 120;
-              doc.addImage(logoDataUrl, logoDataUrl.includes("image/png") ? "PNG" : "JPEG", pageW - margin - maxW, 34, maxW, maxH);
+              const maxH = 34, maxW = 130;
+              doc.addImage(
+                logoDataUrl,
+                logoDataUrl.includes("image/png") ? "PNG" : "JPEG",
+                pageW - margin - maxW,
+                26,
+                maxW,
+                maxH
+              );
             }catch(e){}
           }
 
@@ -896,19 +902,31 @@
             return [`Mesa ${i+1}`, enfrentamiento, sala, jueces];
           });
 
+          // Anchuras pensadas para A4 horizontal (842pt aprox de ancho)
+          const usableW = pageW - margin*2;
+          const col0 = 70;
+          const col2 = 150;
+          const col3 = 180;
+          const col1 = Math.max(240, usableW - col0 - col2 - col3);
+
           doc.autoTable({
-            startY: 110,
+            startY: 96,
             head: [["Mesa","Enfrentamiento","Sala","Jueces"]],
             body: rows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-            columnStyles: { 0:{cellWidth:60}, 1:{cellWidth:260}, 2:{cellWidth:110}, 3:{cellWidth:110} },
+            columnStyles: {
+              0:{cellWidth:col0},
+              1:{cellWidth:col1},
+              2:{cellWidth:col2},
+              3:{cellWidth:col3}
+            },
             margin: { left: margin, right: margin }
           });
 
           doc.setFontSize(9);
           doc.setTextColor(120);
-          doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 30);
+          doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 22);
           doc.setTextColor(0);
 
           const safeName = safeFileName(cfg.tournamentName || "torneo");
@@ -916,13 +934,14 @@
           doc.save(`${safeName}_${safeRound}.pdf`);
         }
 
-        // ===== NUEVO: PDF del Ranking (por grupos + global) =====
+        // ===== PDF del Ranking (por grupos + global) — A4 HORIZONTAL =====
         async function exportRankingPDF(){
           if(!computed.length) return alert("No hay datos para exportar.");
 
           const { jsPDF } = window.jspdf;
-          const doc = new jsPDF({ unit:"pt", format:"a4" });
-          const margin = 40;
+          const doc = new jsPDF({ orientation:"landscape", unit:"pt", format:"a4" });
+
+          const margin = 36;
           const pageW = doc.internal.pageSize.getWidth();
           const pageH = doc.internal.pageSize.getHeight();
 
@@ -931,23 +950,37 @@
           function header(title){
             doc.setFont("helvetica","bold");
             doc.setFontSize(16);
-            doc.text(cfg.tournamentName || "Torneo", margin, 50);
+            doc.text(cfg.tournamentName || "Torneo", margin, 42);
 
             doc.setFont("helvetica","normal");
             doc.setFontSize(12);
-            doc.text(title, margin, 72);
+            doc.text(title, margin, 62);
 
             doc.setFontSize(10);
             doc.setTextColor(100);
-            doc.text(`Generado: ${new Date().toLocaleString()}`, margin, 88);
+            doc.text(`Generado: ${new Date().toLocaleString()}`, margin, 78);
             doc.setTextColor(0);
 
             if(logoDataUrl){
               try{
-                const maxH=36, maxW=120;
-                doc.addImage(logoDataUrl, logoDataUrl.includes("image/png")?"PNG":"JPEG", pageW - margin - maxW, 34, maxW, maxH);
+                const maxH=34, maxW=130;
+                doc.addImage(
+                  logoDataUrl,
+                  logoDataUrl.includes("image/png")?"PNG":"JPEG",
+                  pageW - margin - maxW,
+                  26,
+                  maxW,
+                  maxH
+                );
               }catch(e){}
             }
+          }
+
+          function footer(){
+            doc.setFontSize(9);
+            doc.setTextColor(120);
+            doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 22);
+            doc.setTextColor(0);
           }
 
           // 1) Ranking global
@@ -961,16 +994,31 @@
             `${t.positions?.afavor||0}/${t.positions?.enContra||0}`
           ]);
 
+          const usableW = pageW - margin*2;
+          const wPos = 44, wItems = 60, wVotes = 60, wAE = 55;
+          const wSchool = 210;
+          const wTeam = Math.max(260, usableW - (wPos+wSchool+wItems+wVotes+wAE));
+
           doc.autoTable({
-            startY: 110,
+            startY: 96,
             head: [["Pos","Equipo","Institución","Ítems","Votos","A/E"]],
             body: globalRows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
+            columnStyles: {
+              0:{cellWidth:wPos},
+              1:{cellWidth:wTeam},
+              2:{cellWidth:wSchool},
+              3:{cellWidth:wItems},
+              4:{cellWidth:wVotes},
+              5:{cellWidth:wAE}
+            },
             margin: { left: margin, right: margin }
           });
 
-          // 2) Si es grupos, añadir ranking por grupos (cada grupo en páginas/segmentos)
+          footer();
+
+          // 2) Grupos
           if(cfg.tournamentSystem==="grupos"){
             const gs = (groups.length ? groups : ensureGroupsExist());
             for(const g of gs){
@@ -990,20 +1038,25 @@
               ]);
 
               doc.autoTable({
-                startY: 110,
+                startY: 96,
                 head: [["Pos","Equipo","Institución","Ítems","Votos","A/E"]],
                 body: gRows.length ? gRows : [["—","Sin equipos","—","0","0","0/0"]],
                 styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
                 headStyles: { fillColor: [147, 2, 3], textColor: 255 },
+                columnStyles: {
+                  0:{cellWidth:wPos},
+                  1:{cellWidth:wTeam},
+                  2:{cellWidth:wSchool},
+                  3:{cellWidth:wItems},
+                  4:{cellWidth:wVotes},
+                  5:{cellWidth:wAE}
+                },
                 margin: { left: margin, right: margin }
               });
+
+              footer();
             }
           }
-
-          doc.setFontSize(9);
-          doc.setTextColor(120);
-          doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 30);
-          doc.setTextColor(0);
 
           const safeName = safeFileName(cfg.tournamentName || "torneo");
           doc.save(`${safeName}_ranking.pdf`);
