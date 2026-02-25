@@ -575,12 +575,23 @@
           });
         }
 
-        // ====== CAMBIO CLAVE: NO HAY 3 PUNTOS ======
-        // "Gana el que tenga más ítems": usamos "points" como TOTAL DE ÍTEMS (para seguir mostrando una columna principal).
+        // =========================================================
+        // ✅ CLAVE: VICTORIAS + PUNTOS
+        // - puntos: suma de ítems ganados
+        // - victorias: +1 si tus ítems > ítems del rival en un match completado
+        // =========================================================
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
           const map=new Map();
-          ts.forEach(t=>map.set(t.id,{...t,points:0,itemsWon:0,votesWon:0,opponents:[],positions:{afavor:0,enContra:0}}));
+          ts.forEach(t=>map.set(t.id,{
+            ...t,
+            wins: 0,
+            points: 0,          // puntos totales (ítems totales)
+            itemsWon: 0,
+            votesWon: 0,
+            opponents: [],
+            positions: {afavor:0,enContra:0}
+          }));
 
           for(const r of rounds) for(const m of (r.matches||[])){
             if(!m) continue;
@@ -601,21 +612,29 @@
             if(!m.completed) continue;
             if(!m.sidesAssigned) continue;
 
-            const aI=Number(m.favorItems),bI=Number(m.contraItems);
+            const aI=Number(m.favorItems);
+            const bI=Number(m.contraItems);
             const aV=m.favorVotes===null||m.favorVotes===""?null:Number(m.favorVotes);
             const bV=m.contraVotes===null||m.contraVotes===""?null:Number(m.contraVotes);
+
+            if(!Number.isFinite(aI) || !Number.isFinite(bI)) continue;
 
             const Fav = map.get(m.aFavor);
             const Con = map.get(m.enContra);
             if(!Fav || !Con) continue;
 
-            if(Number.isFinite(aI)) Fav.itemsWon+=aI;
-            if(Number.isFinite(bI)) Con.itemsWon+=bI;
+            Fav.itemsWon += aI;
+            Con.itemsWon += bI;
 
-            if(Number.isFinite(aV)) Fav.votesWon+=aV;
-            if(Number.isFinite(bV)) Con.votesWon+=bV;
+            if(Number.isFinite(aV)) Fav.votesWon += aV;
+            if(Number.isFinite(bV)) Con.votesWon += bV;
+
+            // victorias:
+            if(aI > bI) Fav.wins += 1;
+            else if(bI > aI) Con.wins += 1;
           }
 
+          // puntos = ítems totales
           for(const t of map.values()){
             t.points = Number(t.itemsWon || 0);
           }
@@ -639,13 +658,19 @@
           return 0;
         }
 
+        // =========================================================
+        // ✅ ORDEN: 1) victorias 2) puntos
+        // Si empatan, aplicamos tu tiebreak como refinamiento final
+        // =========================================================
         function cmp(a,b){
-          if(b.points!==a.points) return b.points-a.points;
+          if((b.wins||0)!==(a.wins||0)) return (b.wins||0)-(a.wins||0);
+          if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
 
+          // refinamiento: usa el tiebreak configurado (opcional)
           for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
             let v=0;
-            if(p==="Ítems") v = b.itemsWon - a.itemsWon;
-            else if(p==="Votos") v = b.votesWon - a.votesWon;
+            if(p==="Ítems") v = (b.itemsWon||0) - (a.itemsWon||0);
+            else if(p==="Votos") v = (b.votesWon||0) - (a.votesWon||0);
             else if(p==="Enfrentamiento directo") v = h2h(a.id,b.id) * -1;
             if(v!==0) return v;
           }
@@ -801,6 +826,8 @@
             "Posición":i+1,
             "Equipo":t.name,
             "Institución":t.school,
+            "Victorias": t.wins || 0,
+            "Puntos (total)": t.points || 0,
             "Ítems (total)":t.itemsWon,
             "Votos (total)":t.votesWon,
             "A favor":t.positions?.afavor||0,
@@ -839,7 +866,8 @@
         }
 
         // =========================================================
-        // ✅ PDF A4 HORIZONTAL (LANDSCAPE) + autoTable ajustado
+        // ✅ PDF RONDA A4 HORIZONTAL + GRANATE + LOGO + SIN NOTAS
+        // Columnas: Mesa | A FAVOR | EN CONTRA | Sala | Jueces
         // =========================================================
         async function exportRoundPDF(roundIndex){
           const r = rounds[roundIndex];
@@ -847,13 +875,15 @@
 
           const { jsPDF } = window.jspdf;
 
-          // A4 horizontal:
           const doc = new jsPDF({ orientation:"landscape", unit:"pt", format:"a4" });
 
           const margin = 36;
           const pageW = doc.internal.pageSize.getWidth();
           const pageH = doc.internal.pageSize.getHeight();
 
+          const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
+
+          // Header
           doc.setFont("helvetica","bold");
           doc.setFontSize(16);
           doc.text(cfg.tournamentName || "Torneo", margin, 42);
@@ -862,13 +892,11 @@
           doc.setFontSize(12);
           doc.text(r.name || `Ronda ${r.number}`, margin, 62);
 
-          const created = new Date().toLocaleString();
           doc.setFontSize(10);
           doc.setTextColor(100);
-          doc.text(`Generado: ${created}`, margin, 78);
+          doc.text(`Generado: ${new Date().toLocaleString()}`, margin, 78);
           doc.setTextColor(0);
 
-          const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
           if(logoDataUrl){
             try{
               const maxH = 34, maxW = 130;
@@ -888,42 +916,49 @@
             const t1 = teams.find(t=>t.id===id1);
             const t2 = teams.find(t=>t.id===id2);
 
-            let enfrentamiento = "";
+            let favName = "—";
+            let conName = "—";
+
             if(m.sidesAssigned){
               const fav = teams.find(t=>t.id===m.aFavor);
               const con = teams.find(t=>t.id===m.enContra);
-              enfrentamiento = `${fav?.name||"—"} (A FAVOR) vs ${con?.name||"—"} (EN CONTRA)`;
+              favName = fav?.name || "—";
+              conName = con?.name || "—";
             } else {
-              enfrentamiento = `${t1?.name||"—"} vs ${t2?.name||"—"} (Lados por sortear)`;
+              // si no hay lados asignados, lo ponemos como A/B para imprimir, pero sin notas
+              favName = (t1?.name || "—") + " (por sortear)";
+              conName = (t2?.name || "—") + " (por sortear)";
             }
 
             const sala = m.room?.name ? `${m.room.name}${m.room.location?` · ${m.room.location}`:""}` : "—";
             const jueces = (m.judges||[]).length ? (m.judges||[]).map(j=>j.name).join(", ") : "—";
-            return [`Mesa ${i+1}`, enfrentamiento, sala, jueces];
+            return [`Sala ${i+1}`, favName, conName, sala, jueces];
           });
 
-          // Anchuras pensadas para A4 horizontal (842pt aprox de ancho)
           const usableW = pageW - margin*2;
-          const col0 = 70;
-          const col2 = 150;
-          const col3 = 180;
-          const col1 = Math.max(240, usableW - col0 - col2 - col3);
+          const wSala = 70;
+          const wRoom = 160;
+          const wJudges = 210;
+          const wFav = Math.max(200, Math.floor((usableW - (wSala+wRoom+wJudges))/2));
+          const wCon = Math.max(200, usableW - (wSala+wRoom+wJudges+wFav));
 
           doc.autoTable({
             startY: 96,
-            head: [["Mesa","Enfrentamiento","Sala","Jueces"]],
+            head: [["SALA","A FAVOR","EN CONTRA","MESA / UBICACIÓN","JUECES"]],
             body: rows,
-            styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
+            styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak", valign:"top" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
             columnStyles: {
-              0:{cellWidth:col0},
-              1:{cellWidth:col1},
-              2:{cellWidth:col2},
-              3:{cellWidth:col3}
+              0:{cellWidth:wSala},
+              1:{cellWidth:wFav},
+              2:{cellWidth:wCon},
+              3:{cellWidth:wRoom},
+              4:{cellWidth:wJudges}
             },
             margin: { left: margin, right: margin }
           });
 
+          // Footer
           doc.setFontSize(9);
           doc.setTextColor(120);
           doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 22);
@@ -934,7 +969,7 @@
           doc.save(`${safeName}_${safeRound}.pdf`);
         }
 
-        // ===== PDF del Ranking (por grupos + global) — A4 HORIZONTAL =====
+        // ===== PDF Ranking (A4 horizontal) - ahora incluye Victorias y Puntos =====
         async function exportRankingPDF(){
           if(!computed.length) return alert("No hay datos para exportar.");
 
@@ -983,25 +1018,24 @@
             doc.setTextColor(0);
           }
 
-          // 1) Ranking global
-          header("Ranking global (por ítems)");
+          header("Ranking global (Victorias → Puntos)");
           const globalRows = standings.map((t,i)=>[
             String(i+1),
             t.name || "—",
             t.school || "—",
-            String(t.itemsWon || 0),
-            String(t.votesWon || 0),
+            String(t.wins || 0),
+            String(t.points || 0),
             `${t.positions?.afavor||0}/${t.positions?.enContra||0}`
           ]);
 
           const usableW = pageW - margin*2;
-          const wPos = 44, wItems = 60, wVotes = 60, wAE = 55;
-          const wSchool = 210;
-          const wTeam = Math.max(260, usableW - (wPos+wSchool+wItems+wVotes+wAE));
+          const wPos = 44, wWins = 70, wPts = 70, wAE = 55;
+          const wSchool = 220;
+          const wTeam = Math.max(260, usableW - (wPos+wSchool+wWins+wPts+wAE));
 
           doc.autoTable({
             startY: 96,
-            head: [["Pos","Equipo","Institución","Ítems","Votos","A/E"]],
+            head: [["Pos","Equipo","Institución","Victorias","Puntos","A/E"]],
             body: globalRows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
@@ -1009,8 +1043,8 @@
               0:{cellWidth:wPos},
               1:{cellWidth:wTeam},
               2:{cellWidth:wSchool},
-              3:{cellWidth:wItems},
-              4:{cellWidth:wVotes},
+              3:{cellWidth:wWins},
+              4:{cellWidth:wPts},
               5:{cellWidth:wAE}
             },
             margin: { left: margin, right: margin }
@@ -1018,12 +1052,11 @@
 
           footer();
 
-          // 2) Grupos
           if(cfg.tournamentSystem==="grupos"){
             const gs = (groups.length ? groups : ensureGroupsExist());
             for(const g of gs){
               doc.addPage();
-              header(`Ranking del ${g.name} (por ítems)`);
+              header(`Ranking del ${g.name} (Victorias → Puntos)`);
 
               const ids = teams.filter(t=>t.groupId===g.id).map(t=>t.id);
               const gStand = standings.filter(t=>ids.includes(t.id)).slice().sort(cmp);
@@ -1032,14 +1065,14 @@
                 String(i+1),
                 t.name || "—",
                 t.school || "—",
-                String(t.itemsWon || 0),
-                String(t.votesWon || 0),
+                String(t.wins || 0),
+                String(t.points || 0),
                 `${t.positions?.afavor||0}/${t.positions?.enContra||0}`
               ]);
 
               doc.autoTable({
                 startY: 96,
-                head: [["Pos","Equipo","Institución","Ítems","Votos","A/E"]],
+                head: [["Pos","Equipo","Institución","Victorias","Puntos","A/E"]],
                 body: gRows.length ? gRows : [["—","Sin equipos","—","0","0","0/0"]],
                 styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
                 headStyles: { fillColor: [147, 2, 3], textColor: 255 },
@@ -1047,8 +1080,8 @@
                   0:{cellWidth:wPos},
                   1:{cellWidth:wTeam},
                   2:{cellWidth:wSchool},
-                  3:{cellWidth:wItems},
-                  4:{cellWidth:wVotes},
+                  3:{cellWidth:wWins},
+                  4:{cellWidth:wPts},
                   5:{cellWidth:wAE}
                 },
                 margin: { left: margin, right: margin }
@@ -1217,7 +1250,7 @@
                     </select>
                   </div>
 
-                  <div style={{gridColumn:"span 2"}}><label>Criterio de desempate</label>
+                  <div style={{gridColumn:"span 2"}}><label>Criterio de desempate (solo si empatan en victorias y puntos)</label>
                     <select value={cfg.tiebreak} onChange={e=>setCfg({...cfg,tiebreak:e.target.value})}>
                       {TIEBREAKS.map(o=><option key={o} value={o}>{o}</option>)}
                     </select>
@@ -1628,7 +1661,7 @@
 
                                 <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-end"}}>
                                   <div>
-                                    <div className="muted small" style={{marginBottom:4}}>Ítems A favor / En contra</div>
+                                    <div className="muted small" style={{marginBottom:4}}>Puntos A favor / En contra</div>
                                     <div className="score-pair">
                                       <input disabled={!m.sidesAssigned} type="number" style={{width:80}} value={m.favorItems??""} onChange={e=>updMatch(curRound,idx,{favorItems:e.target.value})} placeholder="A fav"/>
                                       <span className="score-sep">/</span>
@@ -1651,7 +1684,7 @@
                         </div>
 
                         <div className="muted small" style={{marginTop:10}}>
-                          * "Completado" cuando hay ítems en ambos lados y los lados están asignados. Los votos son opcionales.
+                          * "Completado" cuando hay puntos en ambos lados y los lados están asignados. Los votos son opcionales.
                         </div>
                       </>
                     )}
@@ -1677,15 +1710,16 @@
                   <div className="muted">Añade equipos primero.</div>
                 ) : (
                   <>
+                    <div className="toast" style={{marginBottom:12}}>
+                      <b>Orden del ranking:</b> <b>Victorias</b> → <b>Puntos</b>
+                      <div className="muted small" style={{marginTop:6}}>
+                        Un equipo suma <b>1 victoria</b> si en el match completado sus puntos son mayores que los del rival.
+                        Si empatan en victorias y puntos, se aplica: <b>{cfg.tiebreak}</b>.
+                      </div>
+                    </div>
+
                     {cfg.tournamentSystem==="grupos" ? (
                       <>
-                        <div className="toast" style={{marginBottom:12}}>
-                          <b>Ranking por grupos + ranking global</b>
-                          <div className="muted small" style={{marginTop:6}}>
-                            El ranking está basado en <b>Ítems totales</b>. El desempate se aplica según: <b>{cfg.tiebreak}</b>.
-                          </div>
-                        </div>
-
                         <h3 style={{marginTop:0}}>Ranking por grupos</h3>
                         <div className="row cols2">
                           {(groups.length ? groups : ensureGroupsExist()).map(g=>{
@@ -1703,15 +1737,15 @@
                                 ) : (
                                   <div className="table-wrap">
                                     <table>
-                                      <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                                      <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Victorias</th><th>Puntos</th><th>A/E</th></tr></thead>
                                       <tbody>
                                         {gStand.map((t,i)=>(
                                           <tr key={t.id}>
                                             <td><b>{i+1}</b></td>
                                             <td className="wrap">{t.name}</td>
                                             <td className="wrap muted">{t.school}</td>
-                                            <td><b>{t.itemsWon}</b></td>
-                                            <td>{t.votesWon}</td>
+                                            <td><b>{t.wins||0}</b></td>
+                                            <td><b>{t.points||0}</b></td>
                                             <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
                                           </tr>
                                         ))}
@@ -1728,14 +1762,14 @@
 
                         <h3 style={{marginTop:0}}>Ranking global</h3>
                         <div className="table-wrap"><table>
-                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Victorias</th><th>Puntos</th><th>A/E</th></tr></thead>
                           <tbody>{standings.map((t,i)=>(
                             <tr key={t.id}>
                               <td><b>{i+1}</b></td>
                               <td className="wrap">{t.name}</td>
                               <td className="wrap muted">{t.school}</td>
-                              <td><b>{t.itemsWon}</b></td>
-                              <td>{t.votesWon}</td>
+                              <td><b>{t.wins||0}</b></td>
+                              <td><b>{t.points||0}</b></td>
                               <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
                             </tr>
                           ))}</tbody>
@@ -1747,23 +1781,16 @@
                       </>
                     ) : (
                       <>
-                        <div className="toast" style={{marginBottom:12}}>
-                          <b>Ranking global</b>
-                          <div className="muted small" style={{marginTop:6}}>
-                            El ranking está basado en <b>Ítems totales</b>. El desempate se aplica según: <b>{cfg.tiebreak}</b>.
-                          </div>
-                        </div>
-
                         <h3 style={{marginTop:0}}>Ranking de equipos</h3>
                         <div className="table-wrap"><table>
-                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Victorias</th><th>Puntos</th><th>A/E</th></tr></thead>
                           <tbody>{standings.map((t,i)=>(
                             <tr key={t.id}>
                               <td><b>{i+1}</b></td>
                               <td className="wrap">{t.name}</td>
                               <td className="wrap muted">{t.school}</td>
-                              <td><b>{t.itemsWon}</b></td>
-                              <td>{t.votesWon}</td>
+                              <td><b>{t.wins||0}</b></td>
+                              <td><b>{t.points||0}</b></td>
                               <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
                             </tr>
                           ))}</tbody>
@@ -1823,5 +1850,4 @@
       ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
     </script>
   </body>
-</html>
-            
+</html>  
