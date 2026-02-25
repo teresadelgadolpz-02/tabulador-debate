@@ -203,7 +203,7 @@
           groupSize:4,
           speakersPerTeam:2,
           tiebreak:"Ítems > Enfrentamiento directo",
-          sideAssignmentMode:"balanceado" // ✅ "balanceado" | "sin_asignar"
+          sideAssignmentMode:"balanceado" // "balanceado" | "sin_asignar"
         });
 
         const [teams, setTeams] = useState([]);
@@ -361,9 +361,7 @@
         function xlsxExport(data,sheet,file){const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);XLSX.writeFile(wb,file);}
         function importExcel(e,cb){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));};r.readAsArrayBuffer(f);e.target.value="";}
 
-        // =========================
-        // ✅ Match helpers: lados asignados o sin asignar
-        // =========================
+        // Match helpers
         function getTeamIdsFromMatch(m){
           if(!m) return [null,null];
           if(m.sidesAssigned) return [m.aFavor, m.enContra];
@@ -437,9 +435,7 @@
           }));
         }
 
-        // =========================
-        // ✅ GRUPOS: round-robin fijo + evitar instituciones SIEMPRE (auto) + edición manual
-        // =========================
+        // Groups core (evitar instituciones SIEMPRE)
         function schoolKey(s){
           const k = String(s||"").trim().toLowerCase();
           return k || "__sin__";
@@ -473,7 +469,6 @@
           const n=Math.max(1,Number(numGroups||1));
           const gs=Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
 
-          // buckets por institución
           const bySchool=new Map();
           for(const t of ts){
             const k=schoolKey(t.school);
@@ -481,11 +476,9 @@
             bySchool.get(k).push(t);
           }
 
-          // ordenar instituciones por tamaño desc y barajar dentro
           const buckets=Array.from(bySchool.values()).map(arr=>arr.sort(()=>Math.random()-.5));
           buckets.sort((a,b)=>b.length-a.length);
 
-          // greedy: grupo con menos miembros y que no tenga esa institución
           for(const bucket of buckets){
             for(const team of bucket){
               const k=schoolKey(team.school);
@@ -498,7 +491,6 @@
 
               let target=candidates[0];
               if(!target){
-                // imposible por números; metemos en el menos lleno
                 target=[...gs].sort((a,b)=>a.teams.length-b.teams.length)[0];
               }
               target.teams.push(team.id);
@@ -583,9 +575,7 @@
           });
         }
 
-        // =========================
-        // ✅ Stats
-        // =========================
+        // Stats
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
           const map=new Map();
@@ -600,7 +590,6 @@
             A.opponents=[...(A.opponents||[]),B.id];
             B.opponents=[...(B.opponents||[]),A.id];
 
-            // posiciones solo si hay lados asignados
             if(m.sidesAssigned){
               const Af = map.get(m.aFavor);
               const Bc = map.get(m.enContra);
@@ -609,7 +598,6 @@
             }
 
             if(!m.completed) continue;
-            // solo tiene sentido si hay lados asignados
             if(!m.sidesAssigned) continue;
 
             const aI=Number(m.favorItems),bI=Number(m.contraItems);
@@ -661,9 +649,7 @@
         }
         const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
 
-        // =========================
-        // ✅ Pairings
-        // =========================
+        // Pairings
         function genPairings(){
           if(teams.length<2)return alert("Necesitas al menos 2 equipos");
           let ms=[];
@@ -719,11 +705,8 @@
 
           if(rounds.length===0 && groups.length===0){
             const shuffled=[...teams].sort(()=>Math.random()-.5);
-
-            // ✅ crear grupos evitando instituciones SIEMPRE (en auto)
             const ng=buildGroupsFixed(shuffled, n);
 
-            // asignar groupId a equipos
             const t2=shuffled.map(t=>{
               const g=ng.find(x=>x.teams.includes(t.id));
               return {...t, groupId:g?.id ?? null};
@@ -735,7 +718,6 @@
             return buildGroupRoundMatches(ng, t2, 0);
           }
 
-          // usar calendario fijo por ronda (round index = rounds.length)
           return buildGroupRoundMatches(groups, teams, rounds.length);
         }
 
@@ -783,7 +765,6 @@
                 const okItems =
                   n.favorItems!==null && n.favorItems!=="" && Number.isFinite(Number(n.favorItems)) &&
                   n.contraItems!==null && n.contraItems!=="" && Number.isFinite(Number(n.contraItems));
-                // ✅ solo completado si hay lados asignados
                 n.completed = !!n.sidesAssigned && okItems;
                 return n;
               })
@@ -825,13 +806,10 @@
           })),"Clasificación","clasificacion.xlsx");
         }
 
-        // =========================
-        // ✅ PDF bonito por ronda
-        // =========================
+        // PDF
         function safeFileName(x){
           return String(x||"").replace(/[^\w\d\- ]+/g,"").trim().replace(/\s+/g,"_") || "archivo";
         }
-
         async function loadLogoDataUrl(url){
           if(!url) return null;
           return new Promise((resolve)=>{
@@ -844,22 +822,18 @@
                 canvas.height = img.height;
                 const ctx=canvas.getContext("2d");
                 ctx.drawImage(img,0,0);
-                // dejamos que el navegador decida; si falla JPEG, queda PNG
                 let dataUrl = null;
                 try { dataUrl = canvas.toDataURL("image/jpeg", 0.92); } catch(e) {}
                 if(!dataUrl || !dataUrl.startsWith("data:image/")) {
                   try { dataUrl = canvas.toDataURL("image/png"); } catch(e) {}
                 }
                 resolve(dataUrl || null);
-              }catch(e){
-                resolve(null);
-              }
+              }catch(e){ resolve(null); }
             };
             img.onerror = ()=>resolve(null);
             img.src = url;
           });
         }
-
         async function exportRoundPDF(roundIndex){
           const r = rounds[roundIndex];
           if(!r) return;
@@ -871,7 +845,6 @@
           const pageW = doc.internal.pageSize.getWidth();
           const pageH = doc.internal.pageSize.getHeight();
 
-          // Header
           doc.setFont("helvetica","bold");
           doc.setFontSize(16);
           doc.text(cfg.tournamentName || "Torneo", margin, 50);
@@ -886,13 +859,10 @@
           doc.text(`Generado: ${created}`, margin, 88);
           doc.setTextColor(0);
 
-          // Logo (opcional)
           const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
           if(logoDataUrl){
             try{
               const maxH = 36, maxW = 120;
-              // estimación: lo metemos con tamaño fijo y que no se pase
-              // (no necesitamos ratios perfectos para un PDF bonito)
               doc.addImage(logoDataUrl, logoDataUrl.includes("image/png") ? "PNG" : "JPEG", pageW - margin - maxW, 34, maxW, maxH);
             }catch(e){}
           }
@@ -923,12 +893,7 @@
             body: rows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-            columnStyles: {
-              0: { cellWidth: 60 },
-              1: { cellWidth: 260 },
-              2: { cellWidth: 110 },
-              3: { cellWidth: 110 }
-            },
+            columnStyles: { 0:{cellWidth:60}, 1:{cellWidth:260}, 2:{cellWidth:110}, 3:{cellWidth:110} },
             margin: { left: margin, right: margin }
           });
 
@@ -942,9 +907,6 @@
           doc.save(`${safeName}_${safeRound}.pdf`);
         }
 
-        // =========================
-        // ✅ UI bits
-        // =========================
         function Tab({id,children}){
           return (
             <button
@@ -1513,46 +1475,18 @@
                                   <div>
                                     <div className="muted small" style={{marginBottom:4}}>Ítems A favor / En contra</div>
                                     <div className="score-pair">
-                                      <input
-                                        disabled={!m.sidesAssigned}
-                                        type="number"
-                                        style={{width:80}}
-                                        value={m.favorItems??""}
-                                        onChange={e=>updMatch(curRound,idx,{favorItems:e.target.value})}
-                                        placeholder="A fav"
-                                      />
+                                      <input disabled={!m.sidesAssigned} type="number" style={{width:80}} value={m.favorItems??""} onChange={e=>updMatch(curRound,idx,{favorItems:e.target.value})} placeholder="A fav"/>
                                       <span className="score-sep">/</span>
-                                      <input
-                                        disabled={!m.sidesAssigned}
-                                        type="number"
-                                        style={{width:80}}
-                                        value={m.contraItems??""}
-                                        onChange={e=>updMatch(curRound,idx,{contraItems:e.target.value})}
-                                        placeholder="En c."
-                                      />
+                                      <input disabled={!m.sidesAssigned} type="number" style={{width:80}} value={m.contraItems??""} onChange={e=>updMatch(curRound,idx,{contraItems:e.target.value})} placeholder="En c."/>
                                     </div>
                                   </div>
 
                                   <div>
                                     <div className="muted small" style={{marginBottom:4}}>Votos A favor / En contra <span className="pill" style={{fontSize:10}}>opcional</span></div>
                                     <div className="score-pair">
-                                      <input
-                                        disabled={!m.sidesAssigned}
-                                        type="number"
-                                        style={{width:80}}
-                                        value={m.favorVotes??""}
-                                        onChange={e=>updMatch(curRound,idx,{favorVotes:e.target.value})}
-                                        placeholder="A fav"
-                                      />
+                                      <input disabled={!m.sidesAssigned} type="number" style={{width:80}} value={m.favorVotes??""} onChange={e=>updMatch(curRound,idx,{favorVotes:e.target.value})} placeholder="A fav"/>
                                       <span className="score-sep">/</span>
-                                      <input
-                                        disabled={!m.sidesAssigned}
-                                        type="number"
-                                        style={{width:80}}
-                                        value={m.contraVotes??""}
-                                        onChange={e=>updMatch(curRound,idx,{contraVotes:e.target.value})}
-                                        placeholder="En c."
-                                      />
+                                      <input disabled={!m.sidesAssigned} type="number" style={{width:80}} value={m.contraVotes??""} onChange={e=>updMatch(curRound,idx,{contraVotes:e.target.value})} placeholder="En c."/>
                                     </div>
                                   </div>
                                 </div>
@@ -1578,27 +1512,88 @@
                   <h2 style={{margin:0}}>Clasificación</h2>
                   <button className="primary" onClick={exportStandings}>⬇️ Exportar Excel</button>
                 </div>
+
                 <div className="spacer"></div>
-                {computed.length===0?<div className="muted">Añade equipos primero.</div>:(
+
+                {computed.length===0 ? (
+                  <div className="muted">Añade equipos primero.</div>
+                ) : (
                   <>
-                    <h3 style={{marginTop:0}}>Ranking de equipos</h3>
-                    <div className="table-wrap"><table>
-                      <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Pts</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
-                      <tbody>{standings.map((t,i)=>(
-                        <tr key={t.id}>
-                          <td><b>{i+1}</b></td>
-                          <td className="wrap">{t.name}</td>
-                          <td className="wrap muted">{t.school}</td>
-                          <td><b>{t.points}</b></td>
-                          <td>{t.itemsWon}</td>
-                          <td>{t.votesWon}</td>
-                          <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
-                        </tr>
-                      ))}</tbody>
-                    </table></div>
-                    <div className="hr"></div>
-                    <h3>Ranking de oradores</h3>
-                    <SpeakerRanking computed={computed}/>
+                    {cfg.tournamentSystem==="grupos" ? (
+                      <>
+                        <div className="toast" style={{marginBottom:12}}>
+                          <b>Ranking por grupos</b>
+                          <div className="muted small" style={{marginTop:6}}>
+                            La clasificación se muestra separada por cada grupo (con el mismo criterio de desempate).
+                          </div>
+                        </div>
+
+                        <div className="row cols2">
+                          {(groups.length ? groups : ensureGroupsExist()).map(g=>{
+                            const ids = teams.filter(t=>t.groupId===g.id).map(t=>t.id);
+                            const gStand = standings.filter(t=>ids.includes(t.id)).slice().sort(cmp);
+                            return (
+                              <div key={g.id} className="card" style={{padding:14}}>
+                                <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",alignItems:"baseline"}}>
+                                  <h3 style={{margin:0}}>{g.name}</h3>
+                                  <span className="pill">{gStand.length} equipos</span>
+                                </div>
+                                <div className="spacer"></div>
+                                {gStand.length===0 ? (
+                                  <div className="muted">Sin equipos asignados.</div>
+                                ) : (
+                                  <div className="table-wrap">
+                                    <table>
+                                      <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Pts</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                                      <tbody>
+                                        {gStand.map((t,i)=>(
+                                          <tr key={t.id}>
+                                            <td><b>{i+1}</b></td>
+                                            <td className="wrap">{t.name}</td>
+                                            <td className="wrap muted">{t.school}</td>
+                                            <td><b>{t.points}</b></td>
+                                            <td>{t.itemsWon}</td>
+                                            <td>{t.votesWon}</td>
+                                            <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="hr"></div>
+
+                        <h3 style={{marginTop:0}}>Ranking de oradores (general)</h3>
+                        <SpeakerRanking computed={computed}/>
+                      </>
+                    ) : (
+                      <>
+                        <h3 style={{marginTop:0}}>Ranking de equipos</h3>
+                        <div className="table-wrap"><table>
+                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Pts</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
+                          <tbody>{standings.map((t,i)=>(
+                            <tr key={t.id}>
+                              <td><b>{i+1}</b></td>
+                              <td className="wrap">{t.name}</td>
+                              <td className="wrap muted">{t.school}</td>
+                              <td><b>{t.points}</b></td>
+                              <td>{t.itemsWon}</td>
+                              <td>{t.votesWon}</td>
+                              <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table></div>
+
+                        <div className="hr"></div>
+                        <h3>Ranking de oradores</h3>
+                        <SpeakerRanking computed={computed}/>
+                      </>
+                    )}
                   </>
                 )}
               </div>
