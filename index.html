@@ -17,6 +17,10 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+    <!-- PDF -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
     <style>
       :root {
         color-scheme: light;
@@ -89,6 +93,7 @@
       .score-sep { color:var(--muted); font-weight:700; }
     </style>
   </head>
+
   <body>
     <header>
       <div class="header-left">
@@ -100,6 +105,7 @@
       </div>
       <div id="header-actions" class="toolbar"></div>
     </header>
+
     <div class="container"><div id="root"></div></div>
 
     <script type="text/babel">
@@ -174,9 +180,11 @@
         const [isReg, setIsReg] = useState(false);
         const [authErr, setAuthErr] = useState("");
         const [authLoad, setAuthLoad] = useState(false);
+
         // Sync
         const [sync, setSync] = useState("ok");
         const saveT = useRef(null);
+
         // Toast
         const [toast, setToast] = useState(null);
         function showToast(title, msg, ms=5500) {
@@ -194,7 +202,8 @@
           numGroups:4,
           groupSize:4,
           speakersPerTeam:2,
-          tiebreak:"Ítems > Enfrentamiento directo"
+          tiebreak:"Ítems > Enfrentamiento directo",
+          sideAssignmentMode:"balanceado" // ✅ "balanceado" | "sin_asignar"
         });
 
         const [teams, setTeams] = useState([]);
@@ -317,7 +326,8 @@
             numGroups:4,
             groupSize:4,
             speakersPerTeam:2,
-            tiebreak:"Ítems > Enfrentamiento directo"
+            tiebreak:"Ítems > Enfrentamiento directo",
+            sideAssignmentMode:"balanceado"
           });
           setTeams([]);setRounds([]);setRooms([]);setJudges([]);setGroups([]);setCurRound(0);
         }
@@ -351,58 +361,85 @@
         function xlsxExport(data,sheet,file){const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);XLSX.writeFile(wb,file);}
         function importExcel(e,cb){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));};r.readAsArrayBuffer(f);e.target.value="";}
 
-        // Stats
-        const computed = useMemo(()=>{
-          const ts=normTeams(teams,cfg.speakersPerTeam);
-          const map=new Map();
-          ts.forEach(t=>map.set(t.id,{...t,points:0,itemsWon:0,votesWon:0,opponents:[],positions:{afavor:0,enContra:0}}));
-          for(const r of rounds) for(const m of (r.matches||[])){
-            if(!m)continue;
-            const A=map.get(m.aFavor),B=map.get(m.enContra);
-            if(!A||!B)continue;
-            A.opponents=[...(A.opponents||[]),B.id];B.opponents=[...(B.opponents||[]),A.id];
-            A.positions={...A.positions,afavor:(A.positions?.afavor||0)+1};
-            B.positions={...B.positions,enContra:(B.positions?.enContra||0)+1};
-            if(!m.completed)continue;
-            const aI=Number(m.favorItems),bI=Number(m.contraItems);
-            const aV=m.favorVotes===null||m.favorVotes===""?null:Number(m.favorVotes);
-            const bV=m.contraVotes===null||m.contraVotes===""?null:Number(m.contraVotes);
-            if(Number.isFinite(aI))A.itemsWon+=aI;if(Number.isFinite(bI))B.itemsWon+=bI;
-            if(Number.isFinite(aV))A.votesWon+=aV;if(Number.isFinite(bV))B.votesWon+=bV;
-            if(aI>bI){A.points+=3;}else if(bI>aI){B.points+=3;}else{A.points+=1;B.points+=1;}
-          }
-          return Array.from(map.values());
-        },[teams,rounds,cfg.speakersPerTeam]);
+        // =========================
+        // ✅ Match helpers: lados asignados o sin asignar
+        // =========================
+        function getTeamIdsFromMatch(m){
+          if(!m) return [null,null];
+          if(m.sidesAssigned) return [m.aFavor, m.enContra];
+          return [m.teamA, m.teamB];
+        }
 
-        function h2h(Aid,Bid){
-          for(const r of rounds) for(const m of (r.matches||[])){
-            if(!m.completed)continue;
-            const ab=(m.aFavor===Aid&&m.enContra===Bid)||(m.aFavor===Bid&&m.enContra===Aid);
-            if(!ab)continue;
-            const aI=Number(m.favorItems),bI=Number(m.contraItems);
-            if(!Number.isFinite(aI)||!Number.isFinite(bI))return 0;
-            if(m.aFavor===Aid) return aI>bI?1:aI<bI?-1:0;
-            else return bI>aI?1:bI<aI?-1:0;
-          }
-          return 0;
+        function chooseSidesBalanced(t1, t2){
+          const aF = Number(t1.positions?.afavor || 0);
+          const aC = Number(t1.positions?.enContra || 0);
+          const bF = Number(t2.positions?.afavor || 0);
+          const bC = Number(t2.positions?.enContra || 0);
+
+          const cost1 = Math.abs((aF+1)-aC) + Math.abs(bF-(bC+1)); // t1 favor, t2 contra
+          const cost2 = Math.abs(aF-(aC+1)) + Math.abs((bF+1)-bC); // t2 favor, t1 contra
+
+          if(cost2 < cost1) return { aFavor: t2.id, enContra: t1.id };
+          if(cost1 < cost2) return { aFavor: t1.id, enContra: t2.id };
+          return (Math.random() > 0.5) ? { aFavor: t1.id, enContra: t2.id } : { aFavor: t2.id, enContra: t1.id };
         }
-        function cmp(a,b){
-          if(b.points!==a.points)return b.points-a.points;
-          for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
-            let v=0;
-            if(p==="Ítems")v=b.itemsWon-a.itemsWon;
-            else if(p==="Votos")v=b.votesWon-a.votesWon;
-            else if(p==="Enfrentamiento directo")v=h2h(a.id,b.id)*-1;
-            if(v!==0)return v;
+
+        function makeMatch(t1, t2, extra = {}){
+          if(cfg.sideAssignmentMode === "sin_asignar"){
+            return {
+              id: uid(),
+              sidesAssigned: false,
+              teamA: t1.id,
+              teamB: t2.id,
+              favorItems: null, contraItems: null,
+              favorVotes: null, contraVotes: null,
+              completed: false,
+              ...extra
+            };
           }
-          return String(a.name||"").localeCompare(String(b.name||""));
+          const sides = chooseSidesBalanced(t1, t2);
+          return {
+            id: uid(),
+            sidesAssigned: true,
+            aFavor: sides.aFavor,
+            enContra: sides.enContra,
+            favorItems: null, contraItems: null,
+            favorVotes: null, contraVotes: null,
+            completed: false,
+            ...extra
+          };
         }
-        const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
+
+        function setMatchSides(ri, mi, favorId){
+          setRounds(prev => prev.map((r,rIdx)=>{
+            if(rIdx!==ri) return r;
+            return {
+              ...r,
+              matches: (r.matches||[]).map((m,mIdx)=>{
+                if(mIdx!==mi) return m;
+                const [id1,id2] = getTeamIdsFromMatch(m);
+                if(!id1 || !id2) return m;
+                const other = (favorId === id1) ? id2 : id1;
+
+                const nm = {
+                  ...m,
+                  sidesAssigned: true,
+                  aFavor: favorId,
+                  enContra: other,
+                  favorItems: null, contraItems: null,
+                  favorVotes: null, contraVotes: null,
+                  completed: false
+                };
+                delete nm.teamA; delete nm.teamB;
+                return nm;
+              })
+            };
+          }));
+        }
 
         // =========================
-        // ✅ GRUPOS: ROUND ROBIN FIJO + EVITAR INSTITUCIONES SIEMPRE
+        // ✅ GRUPOS: round-robin fijo + evitar instituciones SIEMPRE (auto) + edición manual
         // =========================
-
         function schoolKey(s){
           const k = String(s||"").trim().toLowerCase();
           return k || "__sin__";
@@ -448,7 +485,7 @@
           const buckets=Array.from(bySchool.values()).map(arr=>arr.sort(()=>Math.random()-.5));
           buckets.sort((a,b)=>b.length-a.length);
 
-          // asignación greedy: siempre elegir grupo con menos miembros y que NO tenga esa institución
+          // greedy: grupo con menos miembros y que no tenga esa institución
           for(const bucket of buckets){
             for(const team of bucket){
               const k=schoolKey(team.school);
@@ -459,9 +496,9 @@
                 })
                 .sort((a,b)=>a.teams.length-b.teams.length);
 
-              // Si no hay candidatos (caso imposible por números), avisamos y metemos en el menos lleno igualmente
               let target=candidates[0];
               if(!target){
+                // imposible por números; metemos en el menos lleno
                 target=[...gs].sort((a,b)=>a.teams.length-b.teams.length)[0];
               }
               target.teams.push(team.id);
@@ -484,27 +521,25 @@
               const t1=ts.find(t=>t.id===aId);
               const t2=ts.find(t=>t.id===bId);
               if(!t1||!t2) continue;
-              const f=(t1.positions?.afavor||0) <= (t1.positions?.enContra||0);
-              ms.push({
-                id:uid(),
-                aFavor:f?t1.id:t2.id,
-                enContra:f?t2.id:t1.id,
-                favorItems:null,contraItems:null,favorVotes:null,contraVotes:null,
-                completed:false,
-                groupId:g.id
-              });
+              ms.push(makeMatch(t1, t2, { groupId:g.id }));
             }
           }
-          // una ronda normal empareja aprox N/2 matches; aquí ya salen exactos por calendario
           return ms;
         }
 
-        // Recalcula groups (teams + schedule) desde teams[].groupId
+        function ensureGroupsExist(){
+          const n=Math.max(1,Number(cfg.numGroups||1));
+          if(groups.length===n) return groups;
+          const gs=Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
+          setGroups(gs);
+          return gs;
+        }
+
         function rebuildGroupsFromTeams(nextTeams, baseGroups){
           const n=Math.max(1,Number(cfg.numGroups||1));
           const base = (baseGroups && baseGroups.length) ? baseGroups : Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
-
           const gs=base.map(g=>({id:g.id,name:g.name,teams:[],schedule:[]}));
+
           for(const t of nextTeams){
             if(!t.groupId) continue;
             const g=gs.find(x=>x.id===t.groupId);
@@ -516,28 +551,16 @@
           setGroups(gs);
         }
 
-        function ensureGroupsExist(){
-          const n=Math.max(1,Number(cfg.numGroups||1));
-          if(groups.length===n) return groups;
-          const gs=Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
-          setGroups(gs);
-          return gs;
-        }
-
-        // Validación: NO permitir instituciones repetidas dentro de un grupo (SIEMPRE)
         function canPlaceTeamInGroup(teamId, groupId, nextTeams){
           if(!groupId) return true;
           const team = nextTeams.find(t=>t.id===teamId);
           if(!team) return false;
           const k = schoolKey(team.school);
-          // si no tiene institución, lo dejamos (no puede colisionar)
           if(k==="__sin__") return true;
-
           const members = nextTeams.filter(t=>t.groupId===groupId && t.id!==teamId);
           return !members.some(m=>schoolKey(m.school)===k);
         }
 
-        // Cambiar grupo manualmente (bloqueando si rompe instituciones)
         function setTeamGroup(teamId, newGroupId){
           const base = ensureGroupsExist();
 
@@ -549,65 +572,155 @@
               return prev;
             }
 
-            // Si hay rondas, las borramos para evitar emparejamientos incoherentes
             if(rounds.length>0){
               setRounds([]);
               setCurRound(0);
               showToast("ℹ️ Rondas reiniciadas","Al cambiar grupos, se borraron las rondas para evitar incoherencias.");
             }
 
-            // reconstruir groups y schedules
             setTimeout(()=>rebuildGroupsFromTeams(next, base), 0);
             return next;
           });
         }
 
-        // Generación de emparejamientos
+        // =========================
+        // ✅ Stats
+        // =========================
+        const computed = useMemo(()=>{
+          const ts=normTeams(teams,cfg.speakersPerTeam);
+          const map=new Map();
+          ts.forEach(t=>map.set(t.id,{...t,points:0,itemsWon:0,votesWon:0,opponents:[],positions:{afavor:0,enContra:0}}));
+
+          for(const r of rounds) for(const m of (r.matches||[])){
+            if(!m) continue;
+            const [id1,id2] = getTeamIdsFromMatch(m);
+            const A=map.get(id1), B=map.get(id2);
+            if(!A||!B) continue;
+
+            A.opponents=[...(A.opponents||[]),B.id];
+            B.opponents=[...(B.opponents||[]),A.id];
+
+            // posiciones solo si hay lados asignados
+            if(m.sidesAssigned){
+              const Af = map.get(m.aFavor);
+              const Bc = map.get(m.enContra);
+              if(Af) Af.positions={...Af.positions,afavor:(Af.positions?.afavor||0)+1};
+              if(Bc) Bc.positions={...Bc.positions,enContra:(Bc.positions?.enContra||0)+1};
+            }
+
+            if(!m.completed) continue;
+            // solo tiene sentido si hay lados asignados
+            if(!m.sidesAssigned) continue;
+
+            const aI=Number(m.favorItems),bI=Number(m.contraItems);
+            const aV=m.favorVotes===null||m.favorVotes===""?null:Number(m.favorVotes);
+            const bV=m.contraVotes===null||m.contraVotes===""?null:Number(m.contraVotes);
+
+            const Fav = map.get(m.aFavor);
+            const Con = map.get(m.enContra);
+            if(!Fav || !Con) continue;
+
+            if(Number.isFinite(aI)) Fav.itemsWon+=aI;
+            if(Number.isFinite(bI)) Con.itemsWon+=bI;
+            if(Number.isFinite(aV)) Fav.votesWon+=aV;
+            if(Number.isFinite(bV)) Con.votesWon+=bV;
+
+            if(aI>bI){Fav.points+=3;}
+            else if(bI>aI){Con.points+=3;}
+            else {Fav.points+=1; Con.points+=1;}
+          }
+
+          return Array.from(map.values());
+        },[teams,rounds,cfg.speakersPerTeam,cfg.sideAssignmentMode]);
+
+        function h2h(Aid,Bid){
+          for(const r of rounds) for(const m of (r.matches||[])){
+            if(!m?.completed) continue;
+            if(!m.sidesAssigned) continue;
+            const ab=(m.aFavor===Aid&&m.enContra===Bid)||(m.aFavor===Bid&&m.enContra===Aid);
+            if(!ab) continue;
+
+            const aI=Number(m.favorItems),bI=Number(m.contraItems);
+            if(!Number.isFinite(aI)||!Number.isFinite(bI)) return 0;
+
+            if(m.aFavor===Aid) return aI>bI?1:aI<bI?-1:0;
+            else return bI>aI?1:bI<aI?-1:0;
+          }
+          return 0;
+        }
+        function cmp(a,b){
+          if(b.points!==a.points)return b.points-a.points;
+          for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
+            let v=0;
+            if(p==="Ítems")v=b.itemsWon-a.itemsWon;
+            else if(p==="Votos")v=b.votesWon-a.votesWon;
+            else if(p==="Enfrentamiento directo")v=h2h(a.id,b.id)*-1;
+            if(v!==0)return v;
+          }
+          return String(a.name||"").localeCompare(String(b.name||""));
+        }
+        const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
+
+        // =========================
+        // ✅ Pairings
+        // =========================
         function genPairings(){
-          if(teams.length<2) return alert("Necesitas al menos 2 equipos");
+          if(teams.length<2)return alert("Necesitas al menos 2 equipos");
           let ms=[];
           if(cfg.tournamentSystem==="suizo") ms=genSwiss();
           else if(cfg.tournamentSystem==="aleatorio") ms=genRandom();
-          else ms=genGroups(); // grupos
+          else ms=genGroups();
+
           ms=assignRJ(ms);
-          const nr={number:rounds.length+1,name:`Ronda ${rounds.length+1}`,matches:ms,isClassificatory:rounds.length<Number(cfg.roundsClasif||0)};
+          const nr={
+            number:rounds.length+1,
+            name:`Ronda ${rounds.length+1}`,
+            matches:ms,
+            isClassificatory:rounds.length<Number(cfg.roundsClasif||0)
+          };
           const newRounds=[...rounds,nr];
-          setRounds(newRounds);setCurRound(newRounds.length-1);setTab("rondas");
+          setRounds(newRounds);
+          setCurRound(newRounds.length-1);
+          setTab("rondas");
         }
 
         function genSwiss(){
-          const sorted=[...computed].sort(cmp);const ms=[];const paired=new Set();
+          const sorted=[...computed].sort(cmp);
+          const ms=[];
+          const paired=new Set();
+
           for(let i=0;i<sorted.length;i++){
-            if(paired.has(sorted[i].id))continue;
+            if(paired.has(sorted[i].id)) continue;
             for(let j=i+1;j<sorted.length;j++){
-              if(paired.has(sorted[j].id))continue;
-              const t1=sorted[i],t2=sorted[j];
-              if(!cfg.allowRepeatMatchups&&(t1.opponents||[]).includes(t2.id))continue;
-              const f=(t1.positions?.afavor||0)<=(t1.positions?.enContra||0);
-              ms.push({id:uid(),aFavor:f?t1.id:t2.id,enContra:f?t2.id:t1.id,favorItems:null,contraItems:null,favorVotes:null,contraVotes:null,completed:false});
-              paired.add(t1.id);paired.add(t2.id);break;
+              if(paired.has(sorted[j].id)) continue;
+              const t1=sorted[i], t2=sorted[j];
+              if(!cfg.allowRepeatMatchups && (t1.opponents||[]).includes(t2.id)) continue;
+              ms.push(makeMatch(t1,t2));
+              paired.add(t1.id); paired.add(t2.id);
+              break;
             }
           }
           return ms;
         }
+
         function genRandom(){
-          const sh=[...teams].sort(()=>Math.random()-.5);const ms=[];
+          const sh=[...teams].sort(()=>Math.random()-.5);
+          const ms=[];
           for(let i=0;i<sh.length-1;i+=2){
-            const t1=sh[i],t2=sh[i+1];
-            if(!t1||!t2)continue;
-            const f=Math.random()>.5;
-            ms.push({id:uid(),aFavor:f?t1.id:t2.id,enContra:f?t2.id:t1.id,favorItems:null,contraItems:null,favorVotes:null,contraVotes:null,completed:false});
+            const t1=sh[i], t2=sh[i+1];
+            if(!t1||!t2) continue;
+            ms.push(makeMatch(t1,t2));
           }
           return ms;
         }
 
-        // ✅ GRUPOS: si no existen, crear (evitando instituciones SIEMPRE); luego usar calendario fijo por rondas
         function genGroups(){
           const n=Math.max(1,Number(cfg.numGroups||1));
+
           if(rounds.length===0 && groups.length===0){
             const shuffled=[...teams].sort(()=>Math.random()-.5);
 
-            // crear grupos evitando instituciones
+            // ✅ crear grupos evitando instituciones SIEMPRE (en auto)
             const ng=buildGroupsFixed(shuffled, n);
 
             // asignar groupId a equipos
@@ -619,11 +732,10 @@
             setGroups(ng);
             setTeams(t2);
 
-            // construir matches para la ronda 0
             return buildGroupRoundMatches(ng, t2, 0);
           }
 
-          // si hay groups ya, usar los actuales y su calendario
+          // usar calendario fijo por ronda (round index = rounds.length)
           return buildGroupRoundMatches(groups, teams, rounds.length);
         }
 
@@ -631,30 +743,51 @@
           const aR=rooms.filter(r=>r.available);
           const pJ=judges.filter(j=>j.available&&j.type==="principal");
           const panJ=judges.filter(j=>j.available&&j.type==="panelista");
+
           return ms.map((m,idx)=>{
-            const fT=teams.find(t=>t.id===m.aFavor),cT=teams.find(t=>t.id===m.enContra);
-            const ins=[fT?.school,cT?.school].filter(Boolean);
+            const [id1,id2] = getTeamIdsFromMatch(m);
+            const t1 = teams.find(t=>t.id===id1);
+            const t2 = teams.find(t=>t.id===id2);
+
+            const ins=[t1?.school, t2?.school].filter(Boolean);
             const cf=j=>ins.includes(j.institution)||(j.conflictInstitutions||[]).some(i=>ins.includes(i));
+
             const room=aR.length?aR[idx%aR.length]:null;
             const asgn=[];
+
             const avP=pJ.filter(j=>!cf(j));
             const p=avP.length?avP[idx%avP.length]:pJ[idx%pJ.length];
             if(p)asgn.push({id:p.id,name:p.name,type:"principal",institution:p.institution});
+
             const avPan=panJ.filter(j=>!cf(j)&&!asgn.find(a=>a.id===j.id));
-            for(let i=0;i<Math.min(2,avPan.length);i++)asgn.push({id:avPan[i].id,name:avPan[i].name,type:"panelista",institution:avPan[i].institution});
-            return{...m,room:room?{id:room.id,name:room.name,location:room.location}:null,judges:asgn};
+            for(let i=0;i<Math.min(2,avPan.length);i++){
+              asgn.push({id:avPan[i].id,name:avPan[i].name,type:"panelista",institution:avPan[i].institution});
+            }
+
+            return {
+              ...m,
+              room: room ? {id:room.id,name:room.name,location:room.location} : null,
+              judges: asgn
+            };
           });
         }
 
         function updMatch(ri,mi,patch){
           setRounds(rounds.map((r,rIdx)=>{
-            if(rIdx!==ri)return r;
-            return{...r,matches:(r.matches||[]).map((m,mIdx)=>{
-              if(mIdx!==mi)return m;
-              const n={...m,...patch};
-              n.completed=n.favorItems!==null&&n.favorItems!==""&&Number.isFinite(Number(n.favorItems))&&n.contraItems!==null&&n.contraItems!==""&&Number.isFinite(Number(n.contraItems));
-              return n;
-            })};
+            if(rIdx!==ri) return r;
+            return {
+              ...r,
+              matches: (r.matches||[]).map((m,mIdx)=>{
+                if(mIdx!==mi) return m;
+                const n={...m,...patch};
+                const okItems =
+                  n.favorItems!==null && n.favorItems!=="" && Number.isFinite(Number(n.favorItems)) &&
+                  n.contraItems!==null && n.contraItems!=="" && Number.isFinite(Number(n.contraItems));
+                // ✅ solo completado si hay lados asignados
+                n.completed = !!n.sidesAssigned && okItems;
+                return n;
+              })
+            };
           }));
         }
 
@@ -668,8 +801,8 @@
         function regenRound(idx){
           if(!confirm("¿Regenerar emparejamientos? Se perderán los resultados."))return;
           let ms=[];
-          if(cfg.tournamentSystem==="suizo")ms=genSwiss();
-          else if(cfg.tournamentSystem==="aleatorio")ms=genRandom();
+          if(cfg.tournamentSystem==="suizo") ms=genSwiss();
+          else if(cfg.tournamentSystem==="aleatorio") ms=genRandom();
           else ms=genGroups();
           setRounds(rounds.map((r,i)=>i===idx?{...r,matches:assignRJ(ms)}:r));
         }
@@ -679,11 +812,150 @@
         }
 
         function exportStandings(){
-          xlsxExport(standings.map((t,i)=>({"Posición":i+1,"Equipo":t.name,"Institución":t.school,"Puntos":t.points,"Ítems":t.itemsWon,"Votos":t.votesWon,"A favor":t.positions?.afavor||0,"En contra":t.positions?.enContra||0,"Oradores":(t.speakers||[]).map(s=>`${s.name||"-"} (${s.role||"-"})`).join(", ")})),"Clasificación","clasificacion.xlsx");
+          xlsxExport(standings.map((t,i)=>({
+            "Posición":i+1,
+            "Equipo":t.name,
+            "Institución":t.school,
+            "Puntos":t.points,
+            "Ítems":t.itemsWon,
+            "Votos":t.votesWon,
+            "A favor":t.positions?.afavor||0,
+            "En contra":t.positions?.enContra||0,
+            "Oradores":(t.speakers||[]).map(s=>`${s.name||"-"} (${s.role||"-"})`).join(", ")
+          })),"Clasificación","clasificacion.xlsx");
         }
 
+        // =========================
+        // ✅ PDF bonito por ronda
+        // =========================
+        function safeFileName(x){
+          return String(x||"").replace(/[^\w\d\- ]+/g,"").trim().replace(/\s+/g,"_") || "archivo";
+        }
+
+        async function loadLogoDataUrl(url){
+          if(!url) return null;
+          return new Promise((resolve)=>{
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = ()=>{
+              try{
+                const canvas=document.createElement("canvas");
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx=canvas.getContext("2d");
+                ctx.drawImage(img,0,0);
+                // dejamos que el navegador decida; si falla JPEG, queda PNG
+                let dataUrl = null;
+                try { dataUrl = canvas.toDataURL("image/jpeg", 0.92); } catch(e) {}
+                if(!dataUrl || !dataUrl.startsWith("data:image/")) {
+                  try { dataUrl = canvas.toDataURL("image/png"); } catch(e) {}
+                }
+                resolve(dataUrl || null);
+              }catch(e){
+                resolve(null);
+              }
+            };
+            img.onerror = ()=>resolve(null);
+            img.src = url;
+          });
+        }
+
+        async function exportRoundPDF(roundIndex){
+          const r = rounds[roundIndex];
+          if(!r) return;
+
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({ unit:"pt", format:"a4" });
+
+          const margin = 40;
+          const pageW = doc.internal.pageSize.getWidth();
+          const pageH = doc.internal.pageSize.getHeight();
+
+          // Header
+          doc.setFont("helvetica","bold");
+          doc.setFontSize(16);
+          doc.text(cfg.tournamentName || "Torneo", margin, 50);
+
+          doc.setFont("helvetica","normal");
+          doc.setFontSize(12);
+          doc.text(r.name || `Ronda ${r.number}`, margin, 72);
+
+          const created = new Date().toLocaleString();
+          doc.setFontSize(10);
+          doc.setTextColor(100);
+          doc.text(`Generado: ${created}`, margin, 88);
+          doc.setTextColor(0);
+
+          // Logo (opcional)
+          const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
+          if(logoDataUrl){
+            try{
+              const maxH = 36, maxW = 120;
+              // estimación: lo metemos con tamaño fijo y que no se pase
+              // (no necesitamos ratios perfectos para un PDF bonito)
+              doc.addImage(logoDataUrl, logoDataUrl.includes("image/png") ? "PNG" : "JPEG", pageW - margin - maxW, 34, maxW, maxH);
+            }catch(e){}
+          }
+
+          const rows = (r.matches||[]).map((m,i)=>{
+            const [id1,id2] = getTeamIdsFromMatch(m);
+            const t1 = teams.find(t=>t.id===id1);
+            const t2 = teams.find(t=>t.id===id2);
+
+            let enfrentamiento = "";
+            if(m.sidesAssigned){
+              const fav = teams.find(t=>t.id===m.aFavor);
+              const con = teams.find(t=>t.id===m.enContra);
+              enfrentamiento = `${fav?.name||"—"} (A FAVOR) vs ${con?.name||"—"} (EN CONTRA)`;
+            } else {
+              enfrentamiento = `${t1?.name||"—"} vs ${t2?.name||"—"} (Lados por sortear)`;
+            }
+
+            const sala = m.room?.name ? `${m.room.name}${m.room.location?` · ${m.room.location}`:""}` : "—";
+            const jueces = (m.judges||[]).length ? (m.judges||[]).map(j=>j.name).join(", ") : "—";
+
+            return [`Mesa ${i+1}`, enfrentamiento, sala, jueces];
+          });
+
+          doc.autoTable({
+            startY: 110,
+            head: [["Mesa","Enfrentamiento","Sala","Jueces"]],
+            body: rows,
+            styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
+            headStyles: { fillColor: [147, 2, 3], textColor: 255 },
+            columnStyles: {
+              0: { cellWidth: 60 },
+              1: { cellWidth: 260 },
+              2: { cellWidth: 110 },
+              3: { cellWidth: 110 }
+            },
+            margin: { left: margin, right: margin }
+          });
+
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 30);
+          doc.setTextColor(0);
+
+          const safeName = safeFileName(cfg.tournamentName || "torneo");
+          const safeRound = safeFileName(r.name || `ronda_${r.number}`);
+          doc.save(`${safeName}_${safeRound}.pdf`);
+        }
+
+        // =========================
+        // ✅ UI bits
+        // =========================
         function Tab({id,children}){
-          return <button className={"tab "+(tab===id?"active":"")} onClick={()=>setTab(id)} disabled={!auth||(!hasTournament&&id!=="torneos")} title={!hasTournament&&id!=="torneos"?"Crea o carga un torneo primero":""}>{children}</button>;
+          return (
+            <button
+              className={"tab "+(tab===id?"active":"")}
+              onClick={()=>setTab(id)}
+              disabled={!auth||(!hasTournament&&id!=="torneos")}
+              title={!hasTournament&&id!=="torneos"?"Crea o carga un torneo primero":""}
+            >
+              {children}
+            </button>
+          );
         }
 
         // Auth screen
@@ -725,10 +997,7 @@
                   <Tab id="torneos">🏆 Torneos</Tab>
                   <Tab id="config">⚙️ Config</Tab>
                   <Tab id="equipos">👥 Equipos</Tab>
-
-                  {/* ✅ SOLO SI ESTÁS EN MODO GRUPOS */}
                   {cfg.tournamentSystem==="grupos" && <Tab id="grupos">📦 Grupos</Tab>}
-
                   <Tab id="salas">🏫 Salas</Tab>
                   <Tab id="jueces">🧑‍⚖️ Jueces</Tab>
                   <Tab id="rondas">🧾 Rondas</Tab>
@@ -795,8 +1064,6 @@
                       onChange={e=>{
                         const next = e.target.value;
                         setCfg({...cfg,tournamentSystem:next});
-
-                        // si sales de grupos, limpiar groups y groupId
                         if(next!=="grupos"){
                           setGroups([]);
                           setTeams(prev=>prev.map(t=>{ const nt={...t}; delete nt.groupId; return nt; }));
@@ -816,6 +1083,17 @@
                     </select>
                   </div>
 
+                  <div>
+                    <label>Asignación A favor / En contra</label>
+                    <select
+                      value={cfg.sideAssignmentMode}
+                      onChange={e=>setCfg({...cfg, sideAssignmentMode: e.target.value })}
+                    >
+                      <option value="balanceado">Automática (balanceada)</option>
+                      <option value="sin_asignar">No asignar (se sortea fuera)</option>
+                    </select>
+                  </div>
+
                   <div><label>Nº oradores por equipo (2–5)</label>
                     <select value={String(cfg.speakersPerTeam)} onChange={e=>{const v=Math.max(2,Math.min(5,Number(e.target.value)));setCfg({...cfg,speakersPerTeam:v});setTeams(prev=>normTeams(prev,v));}}>
                       {[2,3,4,5].map(n=><option key={n} value={n}>{n}</option>)}
@@ -832,24 +1110,21 @@
                     <div><label>Nº de grupos</label><input type="number" value={cfg.numGroups} onChange={e=>{
                       const v=Math.max(1,Number(e.target.value||1));
                       setCfg({...cfg,numGroups:v});
-                      // si cambias numGroups, mejor reiniciar grupos y rondas
                       setGroups([]);
                       setTeams(prev=>prev.map(t=>{ const nt={...t}; delete nt.groupId; return nt; }));
                       setRounds([]); setCurRound(0);
-                      showToast("ℹ️ Grupos reiniciados","Cambiando el número de grupos se reinició la fase de grupos (equipos sin asignar).");
+                      showToast("ℹ️ Grupos reiniciados","Cambiando el número de grupos se reinició la fase de grupos.");
                     }}/></div>
-
-                    <div><label>Tamaño grupo (solo informativo)</label><input type="number" value={cfg.groupSize} onChange={e=>setCfg({...cfg,groupSize:Number(e.target.value)})}/></div>
+                    <div><label>Tamaño grupo (informativo)</label><input type="number" value={cfg.groupSize} onChange={e=>setCfg({...cfg,groupSize:Number(e.target.value)})}/></div>
 
                     <div style={{gridColumn:"span 3"}} className="toast">
-                      <b>Regla activa:</b> siempre se evita que dos equipos de la misma institución estén en el mismo grupo.
+                      <b>Regla activa:</b> la asignación automática de grupos siempre intenta evitar que dos equipos de la misma institución caigan en el mismo grupo.
                       <div className="muted small" style={{marginTop:6}}>
-                        Si el número de equipos de una institución es mayor que el número de grupos, será imposible evitarlo en todos los casos.
+                        Si una institución tiene más equipos que grupos, puede ser imposible evitarlo al 100%.
                       </div>
                     </div>
                   </>}
                 </div>
-
                 <div className="hr"></div>
                 <div className="toolbar" style={{justifyContent:"flex-end"}}>
                   <button className="primary" onClick={genPairings} disabled={computed.length<2}>🧩 Generar emparejamientos (nueva ronda)</button>
@@ -893,7 +1168,7 @@
               </div>
             )}
 
-            {/* ✅ GRUPOS: EDITABLES MANUALMENTE, PERO SIEMPRE EVITANDO INSTITUCIONES */}
+            {/* GRUPOS */}
             {tab==="grupos" && cfg.tournamentSystem==="grupos" && (
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -903,7 +1178,6 @@
                       className="sm"
                       onClick={()=>{
                         if(teams.length<2) return alert("Añade equipos primero.");
-                        // crear asignación automática respetando instituciones SIEMPRE
                         const shuffled=[...teams].sort(()=>Math.random()-.5);
                         const ng=buildGroupsFixed(shuffled, cfg.numGroups);
                         const t2=shuffled.map(t=>{
@@ -912,12 +1186,11 @@
                         });
                         setTeams(t2);
                         setGroups(ng);
-                        // reset rondas para coherencia
                         if(rounds.length>0){
                           setRounds([]); setCurRound(0);
                           showToast("ℹ️ Rondas reiniciadas","Al regenerar grupos, se borraron las rondas.");
                         }
-                        showToast("✅ Grupos generados","Puedes editar manualmente sin romper la regla de instituciones.");
+                        showToast("✅ Grupos generados","Puedes editar manualmente (se bloqueará si rompe instituciones).");
                       }}
                     >
                       🎲 Generar grupos automático
@@ -931,7 +1204,7 @@
                         setTeams(next);
                         setGroups([]);
                         setRounds([]); setCurRound(0);
-                        showToast("🧹 Grupos vaciados","Ahora puedes volver a asignar equipos manualmente o regenerar.");
+                        showToast("🧹 Grupos vaciados","Ahora puedes asignar equipos manualmente.");
                       }}
                     >
                       🧹 Vaciar
@@ -942,7 +1215,7 @@
                 <div className="spacer"></div>
 
                 <div className="toast" style={{marginBottom:12}}>
-                  <b>Regla obligatoria:</b> no se permite mover un equipo a un grupo donde ya exista un equipo de la misma institución.
+                  <b>Regla:</b> no se permite mover un equipo a un grupo donde ya exista otro equipo de la misma institución.
                 </div>
 
                 <div className="card" style={{padding:14}}>
@@ -1005,7 +1278,7 @@
                 <div className="spacer"></div>
 
                 {groups.length===0 ? (
-                  <div className="muted">Aún no hay grupos creados. Pulsa “🎲 Generar grupos automático” o asigna equipos manualmente (se crearán grupos al cambiar un equipo).</div>
+                  <div className="muted">Aún no hay grupos creados. Pulsa “🎲 Generar grupos automático” o asigna equipos manualmente.</div>
                 ) : (
                   <div className="row cols2">
                     {groups.map(g=>{
@@ -1040,30 +1313,6 @@
                                 </tbody>
                               </table>
                             </div>
-                          )}
-
-                          {Array.isArray(g.schedule) && g.schedule.length>0 && (
-                            <>
-                              <div className="hr"></div>
-                              <div className="muted small" style={{marginBottom:6}}><b>Calendario (round-robin)</b></div>
-                              <div className="muted small">
-                                {g.schedule.map((pairs,ri)=>(
-                                  <div key={ri} style={{marginBottom:4}}>
-                                    <b>Ronda {ri+1}:</b>{" "}
-                                    {pairs.map(([a,b],pi)=>{
-                                      const A=teams.find(x=>x.id===a);
-                                      const B=teams.find(x=>x.id===b);
-                                      return (
-                                        <span key={pi}>
-                                          {(A?.name||"—")} vs {(B?.name||"—")}
-                                          {pi<pairs.length-1 ? " · " : ""}
-                                        </span>
-                                      );
-                                    })}
-                                  </div>
-                                ))}
-                              </div>
-                            </>
                           )}
                         </div>
                       );
@@ -1139,10 +1388,15 @@
                   <h2 style={{margin:0}}>Rondas</h2>
                   <div className="toolbar">
                     <button className="primary" onClick={genPairings} disabled={computed.length<2}>➕ Nueva ronda</button>
+                    <button className="sm" onClick={()=>{ if(rounds.length===0) return alert("No hay rondas."); exportRoundPDF(curRound); }}>
+                      📄 PDF (ronda)
+                    </button>
                     <span className="muted small">Total: {rounds.length}</span>
                   </div>
                 </div>
+
                 <div className="spacer"></div>
+
                 {rounds.length===0?<div className="muted">No hay rondas. Pulsa "Nueva ronda".</div>:(
                   <>
                     <div className="stack" style={{marginBottom:12}}>
@@ -1173,54 +1427,132 @@
                         );
                       })}
                     </div>
+
                     <div className="hr"></div>
+
                     {rounds[curRound]&&(
                       <>
                         <div className="toolbar" style={{justifyContent:"space-between",marginBottom:12}}>
                           <h3 style={{margin:0}}>{rounds[curRound]?.name||`Ronda ${rounds[curRound]?.number}`}</h3>
-                          <span className="muted small">Desempate: <b>{cfg.tiebreak}</b></span>
+                          <span className="muted small">
+                            Lados: <b>{cfg.sideAssignmentMode==="balanceado" ? "Automática (balanceada)" : "No asignar (se sortea fuera)"}</b> · Desempate: <b>{cfg.tiebreak}</b>
+                          </span>
                         </div>
+
                         <div className="stack">
                           {(rounds[curRound]?.matches||[]).map((m,idx)=>{
-                            const fav=computed.find(t=>t.id===m.aFavor);
-                            const con=computed.find(t=>t.id===m.enContra);
+                            const [id1,id2] = getTeamIdsFromMatch(m);
+                            const t1 = computed.find(t=>t.id===id1);
+                            const t2 = computed.find(t=>t.id===id2);
+
+                            const fav = m.sidesAssigned ? computed.find(t=>t.id===m.aFavor) : null;
+                            const con = m.sidesAssigned ? computed.find(t=>t.id===m.enContra) : null;
+
                             return(
                               <div key={m.id} style={{border:"1px solid #eee",borderRadius:10,padding:"12px 14px",background:"#fff"}}>
                                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:10}}>
                                   <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flex:1}}>
                                     <span className="muted small">Mesa {idx+1}</span>
-                                    <b>{fav?.name||"—"}</b>{fav?.school&&<span className="muted small">{fav.school}</span>}
-                                    <span className="vs-badge">A FAVOR</span>
-                                    <span className="muted">vs</span>
-                                    <span className="vs-badge" style={{background:"#1d4ed8"}}>EN CONTRA</span>
-                                    <b>{con?.name||"—"}</b>{con?.school&&<span className="muted small">{con.school}</span>}
+
+                                    {m.sidesAssigned ? (
+                                      <>
+                                        <b>{fav?.name||"—"}</b>{fav?.school&&<span className="muted small">{fav.school}</span>}
+                                        <span className="vs-badge">A FAVOR</span>
+                                        <span className="muted">vs</span>
+                                        <span className="vs-badge" style={{background:"#1d4ed8"}}>EN CONTRA</span>
+                                        <b>{con?.name||"—"}</b>{con?.school&&<span className="muted small">{con.school}</span>}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <b>{t1?.name||"—"}</b>{t1?.school&&<span className="muted small">{t1.school}</span>}
+                                        <span className="muted">vs</span>
+                                        <b>{t2?.name||"—"}</b>{t2?.school&&<span className="muted small">{t2.school}</span>}
+                                        <span className="pill orange">Lados por sortear</span>
+                                      </>
+                                    )}
                                   </div>
+
                                   <div className="toolbar">
                                     {m.completed?<span className="pill green">✓ Completado</span>:<span className="pill orange">Pendiente</span>}
                                     <button className="danger sm" onClick={()=>deleteMatch(curRound,idx)}>🗑️</button>
                                   </div>
                                 </div>
+
                                 {(m.room||m.judges?.length>0)&&(
                                   <div className="muted small" style={{marginBottom:10}}>
                                     {m.room&&<span>🏫 {m.room.name}{m.room.location?` · ${m.room.location}`:""}</span>}
                                     {m.judges?.length>0&&<span> · 🧑‍⚖️ {m.judges.map(j=>j.name).join(", ")}</span>}
                                   </div>
                                 )}
+
+                                {!m.sidesAssigned && (
+                                  <div className="toast" style={{marginBottom:10}}>
+                                    <b>Asignar lados</b>
+                                    <div className="muted small" style={{marginTop:6}}>
+                                      Selecciona quién va <b>A FAVOR</b>. El otro quedará <b>EN CONTRA</b>.
+                                    </div>
+                                    <div style={{marginTop:8, maxWidth:340}}>
+                                      <select
+                                        value=""
+                                        onChange={e=>{
+                                          const val = e.target.value || null;
+                                          if(val) setMatchSides(curRound, idx, val);
+                                        }}
+                                      >
+                                        <option value="">(elige equipo A FAVOR)</option>
+                                        {[id1,id2].filter(Boolean).map(id=>{
+                                          const tt = computed.find(x=>x.id===id);
+                                          return <option key={id} value={id}>{tt?.name||"—"}{tt?.school?` · ${tt.school}`:""}</option>
+                                        })}
+                                      </select>
+                                    </div>
+                                  </div>
+                                )}
+
                                 <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"flex-end"}}>
                                   <div>
                                     <div className="muted small" style={{marginBottom:4}}>Ítems A favor / En contra</div>
                                     <div className="score-pair">
-                                      <input type="number" style={{width:80}} value={m.favorItems??""} onChange={e=>updMatch(curRound,idx,{favorItems:e.target.value})} placeholder="A fav"/>
+                                      <input
+                                        disabled={!m.sidesAssigned}
+                                        type="number"
+                                        style={{width:80}}
+                                        value={m.favorItems??""}
+                                        onChange={e=>updMatch(curRound,idx,{favorItems:e.target.value})}
+                                        placeholder="A fav"
+                                      />
                                       <span className="score-sep">/</span>
-                                      <input type="number" style={{width:80}} value={m.contraItems??""} onChange={e=>updMatch(curRound,idx,{contraItems:e.target.value})} placeholder="En c."/>
+                                      <input
+                                        disabled={!m.sidesAssigned}
+                                        type="number"
+                                        style={{width:80}}
+                                        value={m.contraItems??""}
+                                        onChange={e=>updMatch(curRound,idx,{contraItems:e.target.value})}
+                                        placeholder="En c."
+                                      />
                                     </div>
                                   </div>
+
                                   <div>
                                     <div className="muted small" style={{marginBottom:4}}>Votos A favor / En contra <span className="pill" style={{fontSize:10}}>opcional</span></div>
                                     <div className="score-pair">
-                                      <input type="number" style={{width:80}} value={m.favorVotes??""} onChange={e=>updMatch(curRound,idx,{favorVotes:e.target.value})} placeholder="A fav"/>
+                                      <input
+                                        disabled={!m.sidesAssigned}
+                                        type="number"
+                                        style={{width:80}}
+                                        value={m.favorVotes??""}
+                                        onChange={e=>updMatch(curRound,idx,{favorVotes:e.target.value})}
+                                        placeholder="A fav"
+                                      />
                                       <span className="score-sep">/</span>
-                                      <input type="number" style={{width:80}} value={m.contraVotes??""} onChange={e=>updMatch(curRound,idx,{contraVotes:e.target.value})} placeholder="En c."/>
+                                      <input
+                                        disabled={!m.sidesAssigned}
+                                        type="number"
+                                        style={{width:80}}
+                                        value={m.contraVotes??""}
+                                        onChange={e=>updMatch(curRound,idx,{contraVotes:e.target.value})}
+                                        placeholder="En c."
+                                      />
                                     </div>
                                   </div>
                                 </div>
@@ -1228,7 +1560,10 @@
                             );
                           })}
                         </div>
-                        <div className="muted small" style={{marginTop:10}}>* "Completado" cuando hay ítems en ambos lados. Los votos son opcionales.</div>
+
+                        <div className="muted small" style={{marginTop:10}}>
+                          * "Completado" cuando hay ítems en ambos lados y los lados están asignados. Los votos son opcionales.
+                        </div>
                       </>
                     )}
                   </>
@@ -1251,8 +1586,12 @@
                       <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Pts</th><th>Ítems</th><th>Votos</th><th>A/E</th></tr></thead>
                       <tbody>{standings.map((t,i)=>(
                         <tr key={t.id}>
-                          <td><b>{i+1}</b></td><td className="wrap">{t.name}</td><td className="wrap muted">{t.school}</td>
-                          <td><b>{t.points}</b></td><td>{t.itemsWon}</td><td>{t.votesWon}</td>
+                          <td><b>{i+1}</b></td>
+                          <td className="wrap">{t.name}</td>
+                          <td className="wrap muted">{t.school}</td>
+                          <td><b>{t.points}</b></td>
+                          <td>{t.itemsWon}</td>
+                          <td>{t.votesWon}</td>
                           <td>{t.positions?.afavor||0}/{t.positions?.enContra||0}</td>
                         </tr>
                       ))}</tbody>
@@ -1266,7 +1605,9 @@
             )}
 
             <div className="card" style={{padding:"10px 14px"}}>
-              <div className="muted small">☁️ Datos guardados en Supabase (Frankfurt) — accesibles desde cualquier dispositivo. · Oradores/equipo: <b>{cfg.speakersPerTeam}</b>.</div>
+              <div className="muted small">
+                ☁️ Datos guardados en Supabase (Frankfurt) — accesibles desde cualquier dispositivo. · Oradores/equipo: <b>{cfg.speakersPerTeam}</b>.
+              </div>
             </div>
           </div>
         );
@@ -1289,7 +1630,14 @@
               <div className="table-wrap"><table>
                 <thead><tr><th>Pos</th><th>Orador</th><th>Rol</th><th>Equipo</th><th>Institución</th><th className="right">Puntos</th></tr></thead>
                 <tbody>{filtered.map((s,i)=>(
-                  <tr key={s.id}><td><b>{i+1}</b></td><td className="wrap">{s.name}</td><td className="nowrap">{s.role}</td><td className="wrap">{s.teamName}</td><td className="wrap muted">{s.school}</td><td className="right"><b>{s.points}</b></td></tr>
+                  <tr key={s.id}>
+                    <td><b>{i+1}</b></td>
+                    <td className="wrap">{s.name}</td>
+                    <td className="nowrap">{s.role}</td>
+                    <td className="wrap">{s.teamName}</td>
+                    <td className="wrap muted">{s.school}</td>
+                    <td className="right"><b>{s.points}</b></td>
+                  </tr>
                 ))}</tbody>
               </table></div>
             )}
@@ -1301,3 +1649,4 @@
     </script>
   </body>
 </html>
+            
