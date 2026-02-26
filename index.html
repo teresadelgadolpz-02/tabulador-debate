@@ -22,75 +22,65 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
     <style>
-      :root {
-        color-scheme: light;
-        --brand: #930203;
-        --brand-light: rgba(147,2,3,0.08);
-        --brand-border: rgba(147,2,3,0.25);
-        --bg: #f6f7fb;
-        --card: #ffffff;
-        --border: #e8e8ee;
-        --muted: #666;
-        --danger: #dc2626;
-      }
-      *, *::before, *::after { box-sizing: border-box; }
-      body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:var(--bg); color:#111; font-size:14px; overflow-x:hidden; }
-      header { background:var(--card); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; gap:10px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
-      .header-left { display:flex; align-items:center; gap:10px; min-width:0; }
-      .brand-logo { width:40px; height:40px; object-fit:contain; border-radius:8px; border:1px solid #eee; background:#fff; padding:4px; flex-shrink:0; }
-      h1 { font-size:15px; margin:0; color:var(--brand); white-space:nowrap; }
-      .container { max-width:100%; width:100%; margin:0 auto; padding:14px 16px 40px; }
-      .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); width:100%; overflow:hidden; }
-      .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-      .tabs { display:flex; gap:6px; flex-wrap:wrap; }
-      .row { display:grid; gap:14px; }
-      .row.cols2 { grid-template-columns:1fr 1fr; }
-      .row.cols3 { grid-template-columns:1fr 1fr 1fr; }
-      @media(max-width:700px){ .row.cols2,.row.cols3{grid-template-columns:1fr;} header{flex-wrap:wrap;} h1{font-size:13px;} }
-      label { font-size:12px; display:block; margin-bottom:5px; color:var(--brand); font-weight:600; }
-      input,select,textarea { width:100%; padding:9px 11px; border:1px solid #d9d9e3; border-radius:10px; background:#fff; color:#111; font-size:13px; outline:none; transition:border-color .15s; }
-      input:focus,select:focus { border-color:var(--brand); }
-      button { padding:9px 13px; border-radius:10px; border:1px solid #d9d9e3; background:white; cursor:pointer; color:var(--brand); font-size:13px; font-weight:500; white-space:nowrap; transition:all .15s; }
-      button:hover { background:#f5f5f7; }
-      button.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
-      button.primary:hover { background:#7a0102; }
-      button.danger { background:var(--danger); border-color:var(--danger); color:#fff; }
-      button.danger:hover { background:#b91c1c; }
-      button.sm { padding:6px 10px; font-size:12px; }
-      button:disabled { opacity:.5; cursor:not-allowed; }
-      .tab { padding:8px 12px; border-radius:999px; border:1px solid #d9d9e3; background:white; font-size:12px; color:var(--brand); white-space:nowrap; }
-      .tab.active { background:var(--brand-light); border-color:var(--brand-border); font-weight:600; }
-      .table-wrap { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px; }
-      table { width:100%; border-collapse:collapse; }
-      th,td { border-bottom:1px solid #eee; padding:10px 8px; text-align:left; font-size:13px; vertical-align:top; }
-      th { font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; }
-      .muted { color:var(--muted); }
-      .small { font-size:12px; }
-      .pill { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; background:#f0f1f5; font-size:11px; color:#555; font-weight:500; }
-      .pill.green { background:#d1fae5; color:#065f46; }
-      .pill.orange { background:#fef3c7; color:#92400e; }
-      .pill.blue { background:#dbeafe; color:#1d4ed8; }
-      .spacer { height:10px; }
-      .hr { height:1px; background:#eee; margin:12px 0; }
-      .right { text-align:right; }
-      .nowrap { white-space:nowrap; }
-      .wrap { word-break:break-word; }
-      code { background:#f0f1f5; padding:2px 6px; border-radius:6px; color:#111; font-size:12px; }
-      .stack { display:grid; gap:8px; }
-      .speakerRow { display:grid; grid-template-columns:1fr 180px 110px; gap:8px; align-items:center; }
-      @media(max-width:700px){ .speakerRow{grid-template-columns:1fr;} table{display:block;overflow-x:auto;} }
-      .round-header { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border); border-radius:10px; cursor:pointer; transition:background .12s; background:#fff; margin-bottom:6px; }
-      .round-header:hover { background:#fafafa; }
-      .round-header.active { border-color:var(--brand-border); background:var(--brand-light); }
-      .toast { border:1px solid var(--brand-border); background:rgba(147,2,3,0.04); border-radius:12px; padding:14px 16px; }
-      .vs-badge { background:var(--brand); color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; flex-shrink:0; }
-      .sync-badge { font-size:11px; padding:3px 8px; border-radius:999px; background:#d1fae5; color:#065f46; font-weight:600; }
-      .sync-badge.loading { background:#e0e7ff; color:#3730a3; }
-      .sync-badge.error { background:#fee2e2; color:#991b1b; }
-      .error-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; color:#991b1b; font-size:13px; margin-bottom:12px; }
-      .score-pair { display:flex; align-items:center; gap:6px; }
-      .score-pair input { width:80px; min-width:0; padding:7px; text-align:center; }
-      .score-sep { color:var(--muted); font-weight:700; }
+      :root{color-scheme:light;--brand:#930203;--brand-light:rgba(147,2,3,.08);--brand-border:rgba(147,2,3,.25);--bg:#f6f7fb;--card:#fff;--border:#e8e8ee;--muted:#666;--danger:#dc2626}
+      *,*::before,*::after{box-sizing:border-box}
+      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:#111;font-size:14px;overflow-x:hidden}
+      header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+      .header-left{display:flex;align-items:center;gap:10px;min-width:0}
+      .brand-logo{width:40px;height:40px;object-fit:contain;border-radius:8px;border:1px solid #eee;background:#fff;padding:4px;flex-shrink:0}
+      h1{font-size:15px;margin:0;color:var(--brand);white-space:nowrap}
+      .container{max-width:100%;width:100%;margin:0 auto;padding:14px 16px 40px}
+      .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);width:100%;overflow:hidden}
+      .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+      .tabs{display:flex;gap:6px;flex-wrap:wrap}
+      .row{display:grid;gap:14px}
+      .row.cols2{grid-template-columns:1fr 1fr}
+      .row.cols3{grid-template-columns:1fr 1fr 1fr}
+      @media(max-width:700px){.row.cols2,.row.cols3{grid-template-columns:1fr}header{flex-wrap:wrap}h1{font-size:13px}}
+      label{font-size:12px;display:block;margin-bottom:5px;color:var(--brand);font-weight:600}
+      input,select,textarea{width:100%;padding:9px 11px;border:1px solid #d9d9e3;border-radius:10px;background:#fff;color:#111;font-size:13px;outline:none;transition:border-color .15s}
+      input:focus,select:focus{border-color:var(--brand)}
+      button{padding:9px 13px;border-radius:10px;border:1px solid #d9d9e3;background:#fff;cursor:pointer;color:var(--brand);font-size:13px;font-weight:500;white-space:nowrap;transition:all .15s}
+      button:hover{background:#f5f5f7}
+      button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+      button.primary:hover{background:#7a0102}
+      button.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+      button.danger:hover{background:#b91c1c}
+      button.sm{padding:6px 10px;font-size:12px}
+      button:disabled{opacity:.5;cursor:not-allowed}
+      .tab{padding:8px 12px;border-radius:999px;border:1px solid #d9d9e3;background:#fff;font-size:12px;color:var(--brand);white-space:nowrap}
+      .tab.active{background:var(--brand-light);border-color:var(--brand-border);font-weight:600}
+      .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
+      table{width:100%;border-collapse:collapse}
+      th,td{border-bottom:1px solid #eee;padding:10px 8px;text-align:left;font-size:13px;vertical-align:top}
+      th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase}
+      .muted{color:var(--muted)}
+      .small{font-size:12px}
+      .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#f0f1f5;font-size:11px;color:#555;font-weight:500}
+      .pill.green{background:#d1fae5;color:#065f46}
+      .pill.orange{background:#fef3c7;color:#92400e}
+      .pill.blue{background:#dbeafe;color:#1d4ed8}
+      .spacer{height:10px}
+      .hr{height:1px;background:#eee;margin:12px 0}
+      .right{text-align:right}
+      .nowrap{white-space:nowrap}
+      .wrap{word-break:break-word}
+      code{background:#f0f1f5;padding:2px 6px;border-radius:6px;color:#111;font-size:12px}
+      .stack{display:grid;gap:8px}
+      .speakerRow{display:grid;grid-template-columns:1fr 180px 110px;gap:8px;align-items:center}
+      @media(max-width:700px){.speakerRow{grid-template-columns:1fr}table{display:block;overflow-x:auto}}
+      .round-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:background .12s;background:#fff;margin-bottom:6px}
+      .round-header:hover{background:#fafafa}
+      .round-header.active{border-color:var(--brand-border);background:var(--brand-light)}
+      .toast{border:1px solid var(--brand-border);background:rgba(147,2,3,.04);border-radius:12px;padding:14px 16px}
+      .vs-badge{background:var(--brand);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0}
+      .sync-badge{font-size:11px;padding:3px 8px;border-radius:999px;background:#d1fae5;color:#065f46;font-weight:600}
+      .sync-badge.loading{background:#e0e7ff;color:#3730a3}
+      .sync-badge.error{background:#fee2e2;color:#991b1b}
+      .error-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;color:#991b1b;font-size:13px;margin-bottom:12px}
+      .score-pair{display:flex;align-items:center;gap:6px}
+      .score-pair input{width:80px;min-width:0;padding:7px;text-align:center}
+      .score-sep{color:var(--muted);font-weight:700}
     </style>
   </head>
 
@@ -368,61 +358,78 @@
           return [m.teamA, m.teamB];
         }
 
-        // ✅ BALANCEO CORREGIDO: SIN AZAR EN EMPATES
-        function chooseSidesBalanced(t1, t2){
-          const aF = Number(t1.positions?.afavor || 0);
-          const aC = Number(t1.positions?.enContra || 0);
-          const bF = Number(t2.positions?.afavor || 0);
-          const bC = Number(t2.positions?.enContra || 0);
-
-          const cost1 = Math.abs((aF+1)-aC) + Math.abs(bF-(bC+1)); // t1 favor, t2 contra
-          const cost2 = Math.abs(aF-(aC+1)) + Math.abs((bF+1)-bC); // t2 favor, t1 contra
-
-          if(cost2 < cost1) return { aFavor: t2.id, enContra: t1.id };
-          if(cost1 < cost2) return { aFavor: t1.id, enContra: t2.id };
-
-          // Empate de coste: preferir corregir desequilibrio
-          const imb1 = aF - aC; // + => demasiado A FAVOR, conviene EN CONTRA
-          const imb2 = bF - bC;
-
-          if(imb1 !== imb2){
-            return (imb1 > imb2)
-              ? { aFavor: t2.id, enContra: t1.id }
-              : { aFavor: t1.id, enContra: t2.id };
+        // ===========================
+        // ✅ ASIGNACIÓN DE LADOS (GLOBAL POR RONDA)
+        // - "sin_asignar": NO rellena aFavor/enContra
+        // - "balanceado": rellena aFavor/enContra minimizando desequilibrios globales (sin azar)
+        // ===========================
+        function getCountsFromComputed(list){
+          const m = new Map();
+          for(const t of list){
+            m.set(t.id, {
+              f: Number(t.positions?.afavor || 0),
+              c: Number(t.positions?.enContra || 0)
+            });
           }
-
-          // Segundo desempate: menos veces A FAVOR
-          if(aF !== bF){
-            return (aF < bF)
-              ? { aFavor: t1.id, enContra: t2.id }
-              : { aFavor: t2.id, enContra: t1.id };
-          }
-
-          // Último desempate: determinista (sin random)
-          return String(t1.id).localeCompare(String(t2.id)) <= 0
-            ? { aFavor: t1.id, enContra: t2.id }
-            : { aFavor: t2.id, enContra: t1.id };
+          return m;
         }
+        function orientationCost(favorId, contraId, counts){
+          const A = counts.get(favorId) || {f:0,c:0};
+          const B = counts.get(contraId) || {f:0,c:0};
+          const Af = A.f + 1, Ac = A.c;
+          const Bf = B.f,     Bc = B.c + 1;
+          const imbalance = Math.abs(Af - Ac) + Math.abs(Bf - Bc);
+          const tie1 = Af; // penaliza dar A FAVOR al que ya lo tiene alto
+          return imbalance * 1000 + tie1;
+        }
+        function assignSidesForRound(matches, computedList){
+          const counts = getCountsFromComputed(computedList);
+          const out = [];
+          for(const m of matches){
+            if(m.sidesAssigned){ out.push(m); continue; }
+            const id1 = m.teamA, id2 = m.teamB;
+            if(!id1 || !id2){ out.push(m); continue; }
 
-        function makeMatch(t1, t2, extra = {}){
-          if(cfg.sideAssignmentMode === "sin_asignar"){
-            return {
-              id: uid(),
-              sidesAssigned: false,
-              teamA: t1.id,
-              teamB: t2.id,
+            const cost12 = orientationCost(id1, id2, counts);
+            const cost21 = orientationCost(id2, id1, counts);
+
+            let favorId = id1, contraId = id2;
+            if(cost21 < cost12){
+              favorId = id2; contraId = id1;
+            } else if(cost21 === cost12) {
+              // desempate determinista
+              if(String(id2).localeCompare(String(id1)) < 0){
+                favorId = id2; contraId = id1;
+              }
+            }
+
+            const A = counts.get(favorId) || {f:0,c:0};
+            const B = counts.get(contraId) || {f:0,c:0};
+            counts.set(favorId, {f:A.f+1, c:A.c});
+            counts.set(contraId,{f:B.f,   c:B.c+1});
+
+            out.push({
+              ...m,
+              sidesAssigned: true,
+              aFavor: favorId,
+              enContra: contraId,
               favorItems: null, contraItems: null,
               favorVotes: null, contraVotes: null,
-              completed: false,
-              ...extra
-            };
+              completed: false
+            });
           }
-          const sides = chooseSidesBalanced(t1, t2);
+          return out;
+        }
+
+        // ✅ makeMatch: SIEMPRE guarda teamA/teamB.
+        // - si "sin_asignar": NO pone aFavor/enContra
+        // - si "balanceado": se asigna DESPUÉS con assignSidesForRound(ms, computed)
+        function makeMatch(t1, t2, extra = {}){
           return {
             id: uid(),
-            sidesAssigned: true,
-            aFavor: sides.aFavor,
-            enContra: sides.enContra,
+            teamA: t1.id,
+            teamB: t2.id,
+            sidesAssigned: false,
             favorItems: null, contraItems: null,
             favorVotes: null, contraVotes: null,
             completed: false,
@@ -430,6 +437,7 @@
           };
         }
 
+        // Asignar lados manualmente (cuando estaba sin asignar)
         function setMatchSides(ri, mi, favorId){
           setRounds(prev => prev.map((r,rIdx)=>{
             if(rIdx!==ri) return r;
@@ -441,7 +449,7 @@
                 if(!id1 || !id2) return m;
                 const other = (favorId === id1) ? id2 : id1;
 
-                const nm = {
+                return {
                   ...m,
                   sidesAssigned: true,
                   aFavor: favorId,
@@ -450,8 +458,6 @@
                   favorVotes: null, contraVotes: null,
                   completed: false
                 };
-                delete nm.teamA; delete nm.teamB;
-                return nm;
               })
             };
           }));
@@ -462,7 +468,6 @@
           const k = String(s||"").trim().toLowerCase();
           return k || "__sin__";
         }
-
         function roundRobinSchedule(teamIds){
           const list=[...teamIds];
           if(list.length%2===1) list.push(null);
@@ -486,7 +491,6 @@
           }
           return schedule;
         }
-
         function buildGroupsFixed(ts, numGroups){
           const n=Math.max(1,Number(numGroups||1));
           const gs=Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
@@ -524,7 +528,6 @@
           }
           return gs;
         }
-
         function buildGroupRoundMatches(gs, ts, roundIndex){
           const ms=[];
           for(const g of gs){
@@ -540,7 +543,6 @@
           }
           return ms;
         }
-
         function ensureGroupsExist(){
           const n=Math.max(1,Number(cfg.numGroups||1));
           if(groups.length===n) return groups;
@@ -548,7 +550,6 @@
           setGroups(gs);
           return gs;
         }
-
         function rebuildGroupsFromTeams(nextTeams, baseGroups){
           const n=Math.max(1,Number(cfg.numGroups||1));
           const base = (baseGroups && baseGroups.length) ? baseGroups : Array.from({length:n},(_,i)=>({id:i+1,name:`Grupo ${String.fromCharCode(65+i)}`,teams:[],schedule:[]}));
@@ -564,7 +565,6 @@
           }
           setGroups(gs);
         }
-
         function canPlaceTeamInGroup(teamId, groupId, nextTeams){
           if(!groupId) return true;
           const team = nextTeams.find(t=>t.id===teamId);
@@ -574,41 +574,34 @@
           const members = nextTeams.filter(t=>t.groupId===groupId && t.id!==teamId);
           return !members.some(m=>schoolKey(m.school)===k);
         }
-
         function setTeamGroup(teamId, newGroupId){
           const base = ensureGroupsExist();
-
           setTeams(prev=>{
             const next = prev.map(t=>t.id===teamId?{...t,groupId:newGroupId||null}:t);
-
             if(newGroupId && !canPlaceTeamInGroup(teamId, newGroupId, next)){
               alert("❌ No se puede: ya hay un equipo de la misma institución en ese grupo.");
               return prev;
             }
-
             if(rounds.length>0){
               setRounds([]);
               setCurRound(0);
               showToast("ℹ️ Rondas reiniciadas","Al cambiar grupos, se borraron las rondas para evitar incoherencias.");
             }
-
             setTimeout(()=>rebuildGroupsFromTeams(next, base), 0);
             return next;
           });
         }
 
-        // =========================================================
-        // ✅ CLAVE: VICTORIAS + PUNTOS
-        // - puntos: suma de ítems ganados
-        // - victorias: +1 si tus ítems > ítems del rival en un match completado
-        // =========================================================
+        // ===========================
+        // ✅ COMPUTED (victorias, ítems, votos y conteo A/E desde matches YA asignados)
+        // ===========================
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
           const map=new Map();
           ts.forEach(t=>map.set(t.id,{
             ...t,
             wins: 0,
-            points: 0,          // puntos totales (ítems totales)
+            points: 0,
             itemsWon: 0,
             votesWon: 0,
             opponents: [],
@@ -651,18 +644,16 @@
             if(Number.isFinite(aV)) Fav.votesWon += aV;
             if(Number.isFinite(bV)) Con.votesWon += bV;
 
-            // victorias:
             if(aI > bI) Fav.wins += 1;
             else if(bI > aI) Con.wins += 1;
           }
 
-          // puntos = ítems totales
           for(const t of map.values()){
             t.points = Number(t.itemsWon || 0);
           }
 
           return Array.from(map.values());
-        },[teams,rounds,cfg.speakersPerTeam,cfg.sideAssignmentMode]);
+        },[teams,rounds,cfg.speakersPerTeam]);
 
         function h2h(Aid,Bid){
           for(const r of rounds) for(const m of (r.matches||[])){
@@ -680,15 +671,9 @@
           return 0;
         }
 
-        // =========================================================
-        // ✅ ORDEN: 1) victorias 2) puntos
-        // Si empatan, aplicamos tu tiebreak como refinamiento final
-        // =========================================================
         function cmp(a,b){
           if((b.wins||0)!==(a.wins||0)) return (b.wins||0)-(a.wins||0);
           if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
-
-          // refinamiento: usa el tiebreak configurado (opcional)
           for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
             let v=0;
             if(p==="Ítems") v = (b.itemsWon||0) - (a.itemsWon||0);
@@ -708,12 +693,21 @@
           else if(cfg.tournamentSystem==="aleatorio") ms=genRandom();
           else ms=genGroups();
 
-          ms=assignRJ(ms);
+          ms = assignRJ(ms);
+
+          // ✅ aquí se decide:
+          // - sin_asignar: NO se asignan lados
+          // - balanceado: se asignan lados globalmente para que TODOS queden lo más equilibrados posible
+          if(cfg.sideAssignmentMode !== "sin_asignar"){
+            ms = assignSidesForRound(ms, computed);
+          }
+
           const nr={
             number:rounds.length+1,
             name:`Ronda ${rounds.length+1}`,
             matches:ms,
-            isClassificatory:rounds.length<Number(cfg.roundsClasif||0)
+            isClassificatory:rounds.length<Number(cfg.roundsClasif||0),
+            sideMode: cfg.sideAssignmentMode // ✅ guardamos el modo usado en ESA ronda
           };
           const newRounds=[...rounds,nr];
           setRounds(newRounds);
@@ -725,7 +719,6 @@
           const sorted=[...computed].sort(cmp);
           const ms=[];
           const paired=new Set();
-
           for(let i=0;i<sorted.length;i++){
             if(paired.has(sorted[i].id)) continue;
             for(let j=i+1;j<sorted.length;j++){
@@ -739,7 +732,6 @@
           }
           return ms;
         }
-
         function genRandom(){
           const sh=[...teams].sort(()=>Math.random()-.5);
           const ms=[];
@@ -750,25 +742,19 @@
           }
           return ms;
         }
-
         function genGroups(){
           const n=Math.max(1,Number(cfg.numGroups||1));
-
           if(rounds.length===0 && groups.length===0){
             const shuffled=[...teams].sort(()=>Math.random()-.5);
             const ng=buildGroupsFixed(shuffled, n);
-
             const t2=shuffled.map(t=>{
               const g=ng.find(x=>x.teams.includes(t.id));
               return {...t, groupId:g?.id ?? null};
             });
-
             setGroups(ng);
             setTeams(t2);
-
             return buildGroupRoundMatches(ng, t2, 0);
           }
-
           return buildGroupRoundMatches(groups, teams, rounds.length);
         }
 
@@ -836,7 +822,13 @@
           if(cfg.tournamentSystem==="suizo") ms=genSwiss();
           else if(cfg.tournamentSystem==="aleatorio") ms=genRandom();
           else ms=genGroups();
-          setRounds(rounds.map((r,i)=>i===idx?{...r,matches:assignRJ(ms)}:r));
+
+          ms = assignRJ(ms);
+          if(cfg.sideAssignmentMode !== "sin_asignar"){
+            ms = assignSidesForRound(ms, computed);
+          }
+
+          setRounds(rounds.map((r,i)=>i===idx?{...r,matches:ms,sideMode:cfg.sideAssignmentMode}:r));
         }
         function deleteMatch(ri,mi){
           if(!confirm("¿Eliminar este enfrentamiento?"))return;
@@ -887,25 +879,18 @@
           });
         }
 
-        // =========================================================
-        // ✅ PDF RONDA A4 HORIZONTAL + GRANATE + LOGO + SIN NOTAS
-        // Columnas: Mesa | A FAVOR | EN CONTRA | Sala | Jueces
-        // =========================================================
         async function exportRoundPDF(roundIndex){
           const r = rounds[roundIndex];
           if(!r) return;
 
           const { jsPDF } = window.jspdf;
-
           const doc = new jsPDF({ orientation:"landscape", unit:"pt", format:"a4" });
 
           const margin = 36;
           const pageW = doc.internal.pageSize.getWidth();
           const pageH = doc.internal.pageSize.getHeight();
-
           const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
 
-          // Header
           doc.setFont("helvetica","bold");
           doc.setFontSize(16);
           doc.text(cfg.tournamentName || "Torneo", margin, 42);
@@ -947,7 +932,6 @@
               favName = fav?.name || "—";
               conName = con?.name || "—";
             } else {
-              // si no hay lados asignados, lo ponemos como A/B para imprimir, pero sin notas
               favName = (t1?.name || "—") + " (por sortear)";
               conName = (t2?.name || "—") + " (por sortear)";
             }
@@ -970,17 +954,10 @@
             body: rows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak", valign:"top" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-            columnStyles: {
-              0:{cellWidth:wSala},
-              1:{cellWidth:wFav},
-              2:{cellWidth:wCon},
-              3:{cellWidth:wRoom},
-              4:{cellWidth:wJudges}
-            },
+            columnStyles: {0:{cellWidth:wSala},1:{cellWidth:wFav},2:{cellWidth:wCon},3:{cellWidth:wRoom},4:{cellWidth:wJudges}},
             margin: { left: margin, right: margin }
           });
 
-          // Footer
           doc.setFontSize(9);
           doc.setTextColor(120);
           doc.text(`${window.COMPANY_NAME || ""}`, margin, pageH - 22);
@@ -991,7 +968,6 @@
           doc.save(`${safeName}_${safeRound}.pdf`);
         }
 
-        // ===== PDF Ranking (A4 horizontal) - ahora incluye Victorias y Puntos =====
         async function exportRankingPDF(){
           if(!computed.length) return alert("No hay datos para exportar.");
 
@@ -1001,7 +977,6 @@
           const margin = 36;
           const pageW = doc.internal.pageSize.getWidth();
           const pageH = doc.internal.pageSize.getHeight();
-
           const logoDataUrl = await loadLogoDataUrl(window.COMPANY_LOGO_URL);
 
           function header(title){
@@ -1032,7 +1007,6 @@
               }catch(e){}
             }
           }
-
           function footer(){
             doc.setFontSize(9);
             doc.setTextColor(120);
@@ -1061,14 +1035,7 @@
             body: globalRows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-            columnStyles: {
-              0:{cellWidth:wPos},
-              1:{cellWidth:wTeam},
-              2:{cellWidth:wSchool},
-              3:{cellWidth:wWins},
-              4:{cellWidth:wPts},
-              5:{cellWidth:wAE}
-            },
+            columnStyles: {0:{cellWidth:wPos},1:{cellWidth:wTeam},2:{cellWidth:wSchool},3:{cellWidth:wWins},4:{cellWidth:wPts},5:{cellWidth:wAE}},
             margin: { left: margin, right: margin }
           });
 
@@ -1079,10 +1046,8 @@
             for(const g of gs){
               doc.addPage();
               header(`Ranking del ${g.name} (Victorias → Puntos)`);
-
               const ids = teams.filter(t=>t.groupId===g.id).map(t=>t.id);
               const gStand = standings.filter(t=>ids.includes(t.id)).slice().sort(cmp);
-
               const gRows = gStand.map((t,i)=>[
                 String(i+1),
                 t.name || "—",
@@ -1098,14 +1063,7 @@
                 body: gRows.length ? gRows : [["—","Sin equipos","—","0","0","0/0"]],
                 styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
                 headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-                columnStyles: {
-                  0:{cellWidth:wPos},
-                  1:{cellWidth:wTeam},
-                  2:{cellWidth:wSchool},
-                  3:{cellWidth:wWins},
-                  4:{cellWidth:wPts},
-                  5:{cellWidth:wAE}
-                },
+                columnStyles: {0:{cellWidth:wPos},1:{cellWidth:wTeam},2:{cellWidth:wSchool},3:{cellWidth:wWins},4:{cellWidth:wPts},5:{cellWidth:wAE}},
                 margin: { left: margin, right: margin }
               });
 
@@ -1587,6 +1545,7 @@
                               ):<b>{r.name||`Ronda ${r.number}`}</b>}
                               <span className={"pill "+(comp===tot&&tot>0?"green":comp>0?"orange":"")}>{comp}/{tot} completados</span>
                               {r.isClassificatory&&<span className="pill">Clasificatoria</span>}
+                              {r.sideMode && <span className="pill blue">Lados: {r.sideMode==="sin_asignar"?"No asignar":"Automática"}</span>}
                             </div>
                             <div className="toolbar" onClick={e=>e.stopPropagation()}>
                               {editRnd===idx?(
@@ -1607,7 +1566,7 @@
                         <div className="toolbar" style={{justifyContent:"space-between",marginBottom:12}}>
                           <h3 style={{margin:0}}>{rounds[curRound]?.name||`Ronda ${rounds[curRound]?.number}`}</h3>
                           <span className="muted small">
-                            Lados: <b>{cfg.sideAssignmentMode==="balanceado" ? "Automática (balanceada)" : "No asignar (se sortea fuera)"}</b> · Desempate: <b>{cfg.tiebreak}</b>
+                            Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada)"}</b> · Desempate: <b>{cfg.tiebreak}</b>
                           </span>
                         </div>
 
@@ -1616,7 +1575,6 @@
                             const [id1,id2] = getTeamIdsFromMatch(m);
                             const t1 = computed.find(t=>t.id===id1);
                             const t2 = computed.find(t=>t.id===id2);
-
                             const fav = m.sidesAssigned ? computed.find(t=>t.id===m.aFavor) : null;
                             const con = m.sidesAssigned ? computed.find(t=>t.id===m.enContra) : null;
 
