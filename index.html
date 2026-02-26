@@ -368,6 +368,7 @@
           return [m.teamA, m.teamB];
         }
 
+        // ✅ BALANCEO CORREGIDO: SIN AZAR EN EMPATES
         function chooseSidesBalanced(t1, t2){
           const aF = Number(t1.positions?.afavor || 0);
           const aC = Number(t1.positions?.enContra || 0);
@@ -379,7 +380,28 @@
 
           if(cost2 < cost1) return { aFavor: t2.id, enContra: t1.id };
           if(cost1 < cost2) return { aFavor: t1.id, enContra: t2.id };
-          return (Math.random() > 0.5) ? { aFavor: t1.id, enContra: t2.id } : { aFavor: t2.id, enContra: t1.id };
+
+          // Empate de coste: preferir corregir desequilibrio
+          const imb1 = aF - aC; // + => demasiado A FAVOR, conviene EN CONTRA
+          const imb2 = bF - bC;
+
+          if(imb1 !== imb2){
+            return (imb1 > imb2)
+              ? { aFavor: t2.id, enContra: t1.id }
+              : { aFavor: t1.id, enContra: t2.id };
+          }
+
+          // Segundo desempate: menos veces A FAVOR
+          if(aF !== bF){
+            return (aF < bF)
+              ? { aFavor: t1.id, enContra: t2.id }
+              : { aFavor: t2.id, enContra: t1.id };
+          }
+
+          // Último desempate: determinista (sin random)
+          return String(t1.id).localeCompare(String(t2.id)) <= 0
+            ? { aFavor: t1.id, enContra: t2.id }
+            : { aFavor: t2.id, enContra: t1.id };
         }
 
         function makeMatch(t1, t2, extra = {}){
@@ -1850,4 +1872,4 @@
       ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
     </script>
   </body>
-</html>  
+</html>
