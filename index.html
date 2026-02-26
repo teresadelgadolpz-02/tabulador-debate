@@ -22,65 +22,75 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
     <style>
-      :root{color-scheme:light;--brand:#930203;--brand-light:rgba(147,2,3,.08);--brand-border:rgba(147,2,3,.25);--bg:#f6f7fb;--card:#fff;--border:#e8e8ee;--muted:#666;--danger:#dc2626}
-      *,*::before,*::after{box-sizing:border-box}
-      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:#111;font-size:14px;overflow-x:hidden}
-      header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-      .header-left{display:flex;align-items:center;gap:10px;min-width:0}
-      .brand-logo{width:40px;height:40px;object-fit:contain;border-radius:8px;border:1px solid #eee;background:#fff;padding:4px;flex-shrink:0}
-      h1{font-size:15px;margin:0;color:var(--brand);white-space:nowrap}
-      .container{max-width:100%;width:100%;margin:0 auto;padding:14px 16px 40px}
-      .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);width:100%;overflow:hidden}
-      .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-      .tabs{display:flex;gap:6px;flex-wrap:wrap}
-      .row{display:grid;gap:14px}
-      .row.cols2{grid-template-columns:1fr 1fr}
-      .row.cols3{grid-template-columns:1fr 1fr 1fr}
-      @media(max-width:700px){.row.cols2,.row.cols3{grid-template-columns:1fr}header{flex-wrap:wrap}h1{font-size:13px}}
-      label{font-size:12px;display:block;margin-bottom:5px;color:var(--brand);font-weight:600}
-      input,select,textarea{width:100%;padding:9px 11px;border:1px solid #d9d9e3;border-radius:10px;background:#fff;color:#111;font-size:13px;outline:none;transition:border-color .15s}
-      input:focus,select:focus{border-color:var(--brand)}
-      button{padding:9px 13px;border-radius:10px;border:1px solid #d9d9e3;background:#fff;cursor:pointer;color:var(--brand);font-size:13px;font-weight:500;white-space:nowrap;transition:all .15s}
-      button:hover{background:#f5f5f7}
-      button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
-      button.primary:hover{background:#7a0102}
-      button.danger{background:var(--danger);border-color:var(--danger);color:#fff}
-      button.danger:hover{background:#b91c1c}
-      button.sm{padding:6px 10px;font-size:12px}
-      button:disabled{opacity:.5;cursor:not-allowed}
-      .tab{padding:8px 12px;border-radius:999px;border:1px solid #d9d9e3;background:#fff;font-size:12px;color:var(--brand);white-space:nowrap}
-      .tab.active{background:var(--brand-light);border-color:var(--brand-border);font-weight:600}
-      .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
-      table{width:100%;border-collapse:collapse}
-      th,td{border-bottom:1px solid #eee;padding:10px 8px;text-align:left;font-size:13px;vertical-align:top}
-      th{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase}
-      .muted{color:var(--muted)}
-      .small{font-size:12px}
-      .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:#f0f1f5;font-size:11px;color:#555;font-weight:500}
-      .pill.green{background:#d1fae5;color:#065f46}
-      .pill.orange{background:#fef3c7;color:#92400e}
-      .pill.blue{background:#dbeafe;color:#1d4ed8}
-      .spacer{height:10px}
-      .hr{height:1px;background:#eee;margin:12px 0}
-      .right{text-align:right}
-      .nowrap{white-space:nowrap}
-      .wrap{word-break:break-word}
-      code{background:#f0f1f5;padding:2px 6px;border-radius:6px;color:#111;font-size:12px}
-      .stack{display:grid;gap:8px}
-      .speakerRow{display:grid;grid-template-columns:1fr 180px 110px;gap:8px;align-items:center}
-      @media(max-width:700px){.speakerRow{grid-template-columns:1fr}table{display:block;overflow-x:auto}}
-      .round-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:background .12s;background:#fff;margin-bottom:6px}
-      .round-header:hover{background:#fafafa}
-      .round-header.active{border-color:var(--brand-border);background:var(--brand-light)}
-      .toast{border:1px solid var(--brand-border);background:rgba(147,2,3,.04);border-radius:12px;padding:14px 16px}
-      .vs-badge{background:var(--brand);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0}
-      .sync-badge{font-size:11px;padding:3px 8px;border-radius:999px;background:#d1fae5;color:#065f46;font-weight:600}
-      .sync-badge.loading{background:#e0e7ff;color:#3730a3}
-      .sync-badge.error{background:#fee2e2;color:#991b1b}
-      .error-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 14px;color:#991b1b;font-size:13px;margin-bottom:12px}
-      .score-pair{display:flex;align-items:center;gap:6px}
-      .score-pair input{width:80px;min-width:0;padding:7px;text-align:center}
-      .score-sep{color:var(--muted);font-weight:700}
+      :root {
+        color-scheme: light;
+        --brand: #930203;
+        --brand-light: rgba(147,2,3,0.08);
+        --brand-border: rgba(147,2,3,0.25);
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --border: #e8e8ee;
+        --muted: #666;
+        --danger: #dc2626;
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+      body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:var(--bg); color:#111; font-size:14px; overflow-x:hidden; }
+      header { background:var(--card); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; gap:10px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+      .header-left { display:flex; align-items:center; gap:10px; min-width:0; }
+      .brand-logo { width:40px; height:40px; object-fit:contain; border-radius:8px; border:1px solid #eee; background:#fff; padding:4px; flex-shrink:0; }
+      h1 { font-size:15px; margin:0; color:var(--brand); white-space:nowrap; }
+      .container { max-width:100%; width:100%; margin:0 auto; padding:14px 16px 40px; }
+      .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); width:100%; overflow:hidden; }
+      .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+      .tabs { display:flex; gap:6px; flex-wrap:wrap; }
+      .row { display:grid; gap:14px; }
+      .row.cols2 { grid-template-columns:1fr 1fr; }
+      .row.cols3 { grid-template-columns:1fr 1fr 1fr; }
+      @media(max-width:700px){ .row.cols2,.row.cols3{grid-template-columns:1fr;} header{flex-wrap:wrap;} h1{font-size:13px;} }
+      label { font-size:12px; display:block; margin-bottom:5px; color:var(--brand); font-weight:600; }
+      input,select,textarea { width:100%; padding:9px 11px; border:1px solid #d9d9e3; border-radius:10px; background:#fff; color:#111; font-size:13px; outline:none; transition:border-color .15s; }
+      input:focus,select:focus { border-color:var(--brand); }
+      button { padding:9px 13px; border-radius:10px; border:1px solid #d9d9e3; background:white; cursor:pointer; color:var(--brand); font-size:13px; font-weight:500; white-space:nowrap; transition:all .15s; }
+      button:hover { background:#f5f5f7; }
+      button.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+      button.primary:hover { background:#7a0102; }
+      button.danger { background:var(--danger); border-color:var(--danger); color:#fff; }
+      button.danger:hover { background:#b91c1c; }
+      button.sm { padding:6px 10px; font-size:12px; }
+      button:disabled { opacity:.5; cursor:not-allowed; }
+      .tab { padding:8px 12px; border-radius:999px; border:1px solid #d9d9e3; background:white; font-size:12px; color:var(--brand); white-space:nowrap; }
+      .tab.active { background:var(--brand-light); border-color:var(--brand-border); font-weight:600; }
+      .table-wrap { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px; }
+      table { width:100%; border-collapse:collapse; }
+      th,td { border-bottom:1px solid #eee; padding:10px 8px; text-align:left; font-size:13px; vertical-align:top; }
+      th { font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; }
+      .muted { color:var(--muted); }
+      .small { font-size:12px; }
+      .pill { display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; background:#f0f1f5; font-size:11px; color:#555; font-weight:500; }
+      .pill.green { background:#d1fae5; color:#065f46; }
+      .pill.orange { background:#fef3c7; color:#92400e; }
+      .pill.blue { background:#dbeafe; color:#1d4ed8; }
+      .spacer { height:10px; }
+      .hr { height:1px; background:#eee; margin:12px 0; }
+      .right { text-align:right; }
+      .nowrap { white-space:nowrap; }
+      .wrap { word-break:break-word; }
+      code { background:#f0f1f5; padding:2px 6px; border-radius:6px; color:#111; font-size:12px; }
+      .stack { display:grid; gap:8px; }
+      .speakerRow { display:grid; grid-template-columns:1fr 180px 110px; gap:8px; align-items:center; }
+      @media(max-width:700px){ .speakerRow{grid-template-columns:1fr;} table{display:block;overflow-x:auto;} }
+      .round-header { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border); border-radius:10px; cursor:pointer; transition:background .12s; background:#fff; margin-bottom:6px; }
+      .round-header:hover { background:#fafafa; }
+      .round-header.active { border-color:var(--brand-border); background:var(--brand-light); }
+      .toast { border:1px solid var(--brand-border); background:rgba(147,2,3,0.04); border-radius:12px; padding:14px 16px; }
+      .vs-badge { background:var(--brand); color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; flex-shrink:0; }
+      .sync-badge { font-size:11px; padding:3px 8px; border-radius:999px; background:#d1fae5; color:#065f46; font-weight:600; }
+      .sync-badge.loading { background:#e0e7ff; color:#3730a3; }
+      .sync-badge.error { background:#fee2e2; color:#991b1b; }
+      .error-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; color:#991b1b; font-size:13px; margin-bottom:12px; }
+      .score-pair { display:flex; align-items:center; gap:6px; }
+      .score-pair input { width:80px; min-width:0; padding:7px; text-align:center; }
+      .score-sep { color:var(--muted); font-weight:700; }
     </style>
   </head>
 
@@ -359,9 +369,10 @@
         }
 
         // ===========================
-        // ✅ ASIGNACIÓN DE LADOS (GLOBAL POR RONDA)
+        // ✅ ASIGNACIÓN DE LADOS (GLOBAL POR RONDA) + INVERSIÓN EN REMATCH
         // - "sin_asignar": NO rellena aFavor/enContra
-        // - "balanceado": rellena aFavor/enContra minimizando desequilibrios globales (sin azar)
+        // - "balanceado": rellena aFavor/enContra minimizando desequilibrios globales
+        // - si dos equipos ya se enfrentaron antes con lados asignados: INVERSIÓN AUTOMÁTICA
         // ===========================
         function getCountsFromComputed(list){
           const m = new Map();
@@ -373,6 +384,7 @@
           }
           return m;
         }
+
         function orientationCost(favorId, contraId, counts){
           const A = counts.get(favorId) || {f:0,c:0};
           const B = counts.get(contraId) || {f:0,c:0};
@@ -382,27 +394,61 @@
           const tie1 = Af; // penaliza dar A FAVOR al que ya lo tiene alto
           return imbalance * 1000 + tie1;
         }
+
+        // ✅ Devuelve el último enfrentamiento previo entre dos equipos (si existe)
+        // { favor: <id>, contra: <id> } o null
+        function lastSidesBetween(teamId1, teamId2){
+          for(let r = rounds.length - 1; r >= 0; r--){
+            const rr = rounds[r];
+            for(const m of (rr.matches || [])){
+              if(!m?.sidesAssigned) continue;
+              const a = m.aFavor;
+              const b = m.enContra;
+              if(!a || !b) continue;
+              const samePair =
+                (a === teamId1 && b === teamId2) ||
+                (a === teamId2 && b === teamId1);
+              if(samePair){
+                return { favor: a, contra: b };
+              }
+            }
+          }
+          return null;
+        }
+
         function assignSidesForRound(matches, computedList){
           const counts = getCountsFromComputed(computedList);
           const out = [];
+
           for(const m of matches){
             if(m.sidesAssigned){ out.push(m); continue; }
             const id1 = m.teamA, id2 = m.teamB;
             if(!id1 || !id2){ out.push(m); continue; }
 
-            const cost12 = orientationCost(id1, id2, counts);
-            const cost21 = orientationCost(id2, id1, counts);
+            // ✅ 1) Si ya han debatido antes: FORZAR INVERSIÓN
+            const prev = lastSidesBetween(id1, id2);
+            let favorId, contraId;
 
-            let favorId = id1, contraId = id2;
-            if(cost21 < cost12){
-              favorId = id2; contraId = id1;
-            } else if(cost21 === cost12) {
-              // desempate determinista
-              if(String(id2).localeCompare(String(id1)) < 0){
+            if(prev){
+              favorId = (prev.favor === id1) ? id2 : id1;
+              contraId = (favorId === id1) ? id2 : id1;
+            } else {
+              // ✅ 2) Si no hay histórico: balance global por coste
+              const cost12 = orientationCost(id1, id2, counts);
+              const cost21 = orientationCost(id2, id1, counts);
+
+              favorId = id1; contraId = id2;
+              if(cost21 < cost12){
                 favorId = id2; contraId = id1;
+              } else if(cost21 === cost12) {
+                // desempate determinista
+                if(String(id2).localeCompare(String(id1)) < 0){
+                  favorId = id2; contraId = id1;
+                }
               }
             }
 
+            // aplicar a counts (para balancear toda la ronda)
             const A = counts.get(favorId) || {f:0,c:0};
             const B = counts.get(contraId) || {f:0,c:0};
             counts.set(favorId, {f:A.f+1, c:A.c});
@@ -418,6 +464,7 @@
               completed: false
             });
           }
+
           return out;
         }
 
@@ -463,7 +510,9 @@
           }));
         }
 
-        // Groups core (evitar instituciones SIEMPRE)
+        // =======================
+        // GRUPOS (igual que antes)
+        // =======================
         function schoolKey(s){
           const k = String(s||"").trim().toLowerCase();
           return k || "__sin__";
@@ -578,23 +627,26 @@
           const base = ensureGroupsExist();
           setTeams(prev=>{
             const next = prev.map(t=>t.id===teamId?{...t,groupId:newGroupId||null}:t);
+
             if(newGroupId && !canPlaceTeamInGroup(teamId, newGroupId, next)){
               alert("❌ No se puede: ya hay un equipo de la misma institución en ese grupo.");
               return prev;
             }
+
             if(rounds.length>0){
               setRounds([]);
               setCurRound(0);
               showToast("ℹ️ Rondas reiniciadas","Al cambiar grupos, se borraron las rondas para evitar incoherencias.");
             }
+
             setTimeout(()=>rebuildGroupsFromTeams(next, base), 0);
             return next;
           });
         }
 
-        // ===========================
-        // ✅ COMPUTED (victorias, ítems, votos y conteo A/E desde matches YA asignados)
-        // ===========================
+        // =======================
+        // ✅ COMPUTED (igual que antes)
+        // =======================
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
           const map=new Map();
@@ -674,6 +726,7 @@
         function cmp(a,b){
           if((b.wins||0)!==(a.wins||0)) return (b.wins||0)-(a.wins||0);
           if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
+
           for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
             let v=0;
             if(p==="Ítems") v = (b.itemsWon||0) - (a.itemsWon||0);
@@ -685,7 +738,9 @@
         }
         const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
 
-        // Pairings
+        // =======================
+        // Pairings (igual, pero usando assignSidesForRound con inversión en rematch)
+        // =======================
         function genPairings(){
           if(teams.length<2)return alert("Necesitas al menos 2 equipos");
           let ms=[];
@@ -695,9 +750,6 @@
 
           ms = assignRJ(ms);
 
-          // ✅ aquí se decide:
-          // - sin_asignar: NO se asignan lados
-          // - balanceado: se asignan lados globalmente para que TODOS queden lo más equilibrados posible
           if(cfg.sideAssignmentMode !== "sin_asignar"){
             ms = assignSidesForRound(ms, computed);
           }
@@ -707,7 +759,7 @@
             name:`Ronda ${rounds.length+1}`,
             matches:ms,
             isClassificatory:rounds.length<Number(cfg.roundsClasif||0),
-            sideMode: cfg.sideAssignmentMode // ✅ guardamos el modo usado en ESA ronda
+            sideMode: cfg.sideAssignmentMode
           };
           const newRounds=[...rounds,nr];
           setRounds(newRounds);
@@ -732,6 +784,7 @@
           }
           return ms;
         }
+
         function genRandom(){
           const sh=[...teams].sort(()=>Math.random()-.5);
           const ms=[];
@@ -742,6 +795,7 @@
           }
           return ms;
         }
+
         function genGroups(){
           const n=Math.max(1,Number(cfg.numGroups||1));
           if(rounds.length===0 && groups.length===0){
@@ -954,7 +1008,13 @@
             body: rows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak", valign:"top" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-            columnStyles: {0:{cellWidth:wSala},1:{cellWidth:wFav},2:{cellWidth:wCon},3:{cellWidth:wRoom},4:{cellWidth:wJudges}},
+            columnStyles: {
+              0:{cellWidth:wSala},
+              1:{cellWidth:wFav},
+              2:{cellWidth:wCon},
+              3:{cellWidth:wRoom},
+              4:{cellWidth:wJudges}
+            },
             margin: { left: margin, right: margin }
           });
 
@@ -1007,6 +1067,7 @@
               }catch(e){}
             }
           }
+
           function footer(){
             doc.setFontSize(9);
             doc.setTextColor(120);
@@ -1035,7 +1096,14 @@
             body: globalRows,
             styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
             headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-            columnStyles: {0:{cellWidth:wPos},1:{cellWidth:wTeam},2:{cellWidth:wSchool},3:{cellWidth:wWins},4:{cellWidth:wPts},5:{cellWidth:wAE}},
+            columnStyles: {
+              0:{cellWidth:wPos},
+              1:{cellWidth:wTeam},
+              2:{cellWidth:wSchool},
+              3:{cellWidth:wWins},
+              4:{cellWidth:wPts},
+              5:{cellWidth:wAE}
+            },
             margin: { left: margin, right: margin }
           });
 
@@ -1046,8 +1114,10 @@
             for(const g of gs){
               doc.addPage();
               header(`Ranking del ${g.name} (Victorias → Puntos)`);
+
               const ids = teams.filter(t=>t.groupId===g.id).map(t=>t.id);
               const gStand = standings.filter(t=>ids.includes(t.id)).slice().sort(cmp);
+
               const gRows = gStand.map((t,i)=>[
                 String(i+1),
                 t.name || "—",
@@ -1063,7 +1133,14 @@
                 body: gRows.length ? gRows : [["—","Sin equipos","—","0","0","0/0"]],
                 styles: { font:"helvetica", fontSize:9, cellPadding:6, overflow:"linebreak" },
                 headStyles: { fillColor: [147, 2, 3], textColor: 255 },
-                columnStyles: {0:{cellWidth:wPos},1:{cellWidth:wTeam},2:{cellWidth:wSchool},3:{cellWidth:wWins},4:{cellWidth:wPts},5:{cellWidth:wAE}},
+                columnStyles: {
+                  0:{cellWidth:wPos},
+                  1:{cellWidth:wTeam},
+                  2:{cellWidth:wSchool},
+                  3:{cellWidth:wWins},
+                  4:{cellWidth:wPts},
+                  5:{cellWidth:wAE}
+                },
                 margin: { left: margin, right: margin }
               });
 
@@ -1575,6 +1652,7 @@
                             const [id1,id2] = getTeamIdsFromMatch(m);
                             const t1 = computed.find(t=>t.id===id1);
                             const t2 = computed.find(t=>t.id===id2);
+
                             const fav = m.sidesAssigned ? computed.find(t=>t.id===m.aFavor) : null;
                             const con = m.sidesAssigned ? computed.find(t=>t.id===m.enContra) : null;
 
