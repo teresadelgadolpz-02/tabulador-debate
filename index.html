@@ -86,11 +86,13 @@
       .vs-badge { background:var(--brand); color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; flex-shrink:0; }
       .sync-badge { font-size:11px; padding:3px 8px; border-radius:999px; background:#d1fae5; color:#065f46; font-weight:600; }
       .sync-badge.loading { background:#e0e7ff; color:#3730a3; }
-      .sync-badge.error { background:#fee2e2; color:#991b1b; }
+      .sync-badge.error { background:#fee2e2; color:#991b1b; font-weight:600; }
       .error-box { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 14px; color:#991b1b; font-size:13px; margin-bottom:12px; }
       .score-pair { display:flex; align-items:center; gap:6px; }
       .score-pair input { width:80px; min-width:0; padding:7px; text-align:center; }
       .score-sep { color:var(--muted); font-weight:700; }
+      .miniGrid { display:grid; grid-template-columns:1fr 100px; gap:8px; align-items:center; }
+      .miniGrid input { padding:7px 9px; }
     </style>
   </head>
 
@@ -369,10 +371,9 @@
         }
 
         // ===========================
-        // ✅ ASIGNACIÓN DE LADOS (GLOBAL POR RONDA) + INVERSIÓN EN REMATCH
-        // - "sin_asignar": NO rellena aFavor/enContra
-        // - "balanceado": rellena aFavor/enContra minimizando desequilibrios globales
-        // - si dos equipos ya se enfrentaron antes con lados asignados: INVERSIÓN AUTOMÁTICA
+        // ✅ ASIGNACIÓN DE LADOS:
+        // - Rematch -> invierte
+        // - Si no: balance global + penaliza repetir lado de la ronda anterior (alternancia)
         // ===========================
         function getCountsFromComputed(list){
           const m = new Map();
@@ -384,19 +385,34 @@
           }
           return m;
         }
-
+        function lastSideOfTeam(teamId){
+          for(let r = rounds.length - 1; r >= 0; r--){
+            const rr = rounds[r];
+            for(const m of (rr.matches || [])){
+              if(!m?.sidesAssigned) continue;
+              if(m.aFavor === teamId) return "favor";
+              if(m.enContra === teamId) return "contra";
+            }
+          }
+          return null;
+        }
         function orientationCost(favorId, contraId, counts){
           const A = counts.get(favorId) || {f:0,c:0};
           const B = counts.get(contraId) || {f:0,c:0};
           const Af = A.f + 1, Ac = A.c;
           const Bf = B.f,     Bc = B.c + 1;
-          const imbalance = Math.abs(Af - Ac) + Math.abs(Bf - Bc);
-          const tie1 = Af; // penaliza dar A FAVOR al que ya lo tiene alto
-          return imbalance * 1000 + tie1;
-        }
 
-        // ✅ Devuelve el último enfrentamiento previo entre dos equipos (si existe)
-        // { favor: <id>, contra: <id> } o null
+          const imbalance = Math.abs(Af - Ac) + Math.abs(Bf - Bc);
+
+          const lastA = lastSideOfTeam(favorId);
+          const lastB = lastSideOfTeam(contraId);
+          let repeatPenalty = 0;
+          if(lastA === "favor") repeatPenalty += 3;
+          if(lastB === "contra") repeatPenalty += 3;
+
+          const tie1 = Af;
+          return imbalance * 1000 + repeatPenalty * 100 + tie1;
+        }
         function lastSidesBetween(teamId1, teamId2){
           for(let r = rounds.length - 1; r >= 0; r--){
             const rr = rounds[r];
@@ -425,7 +441,6 @@
             const id1 = m.teamA, id2 = m.teamB;
             if(!id1 || !id2){ out.push(m); continue; }
 
-            // ✅ 1) Si ya han debatido antes: FORZAR INVERSIÓN
             const prev = lastSidesBetween(id1, id2);
             let favorId, contraId;
 
@@ -433,7 +448,6 @@
               favorId = (prev.favor === id1) ? id2 : id1;
               contraId = (favorId === id1) ? id2 : id1;
             } else {
-              // ✅ 2) Si no hay histórico: balance global por coste
               const cost12 = orientationCost(id1, id2, counts);
               const cost21 = orientationCost(id2, id1, counts);
 
@@ -441,14 +455,12 @@
               if(cost21 < cost12){
                 favorId = id2; contraId = id1;
               } else if(cost21 === cost12) {
-                // desempate determinista
                 if(String(id2).localeCompare(String(id1)) < 0){
                   favorId = id2; contraId = id1;
                 }
               }
             }
 
-            // aplicar a counts (para balancear toda la ronda)
             const A = counts.get(favorId) || {f:0,c:0};
             const B = counts.get(contraId) || {f:0,c:0};
             counts.set(favorId, {f:A.f+1, c:A.c});
@@ -461,6 +473,9 @@
               enContra: contraId,
               favorItems: null, contraItems: null,
               favorVotes: null, contraVotes: null,
+              // ✅ puntos por orador en ESTA ronda
+              favorSpeakerPoints: m.favorSpeakerPoints || {},
+              contraSpeakerPoints: m.contraSpeakerPoints || {},
               completed: false
             });
           }
@@ -468,15 +483,15 @@
           return out;
         }
 
-        // ✅ makeMatch: SIEMPRE guarda teamA/teamB.
-        // - si "sin_asignar": NO pone aFavor/enContra
-        // - si "balanceado": se asigna DESPUÉS con assignSidesForRound(ms, computed)
+        // ✅ makeMatch: guarda teamA/teamB y bolsas de puntos por orador
         function makeMatch(t1, t2, extra = {}){
           return {
             id: uid(),
             teamA: t1.id,
             teamB: t2.id,
             sidesAssigned: false,
+            favorSpeakerPoints: {},
+            contraSpeakerPoints: {},
             favorItems: null, contraItems: null,
             favorVotes: null, contraVotes: null,
             completed: false,
@@ -484,7 +499,6 @@
           };
         }
 
-        // Asignar lados manualmente (cuando estaba sin asignar)
         function setMatchSides(ri, mi, favorId){
           setRounds(prev => prev.map((r,rIdx)=>{
             if(rIdx!==ri) return r;
@@ -503,8 +517,28 @@
                   enContra: other,
                   favorItems: null, contraItems: null,
                   favorVotes: null, contraVotes: null,
+                  favorSpeakerPoints: m.favorSpeakerPoints || {},
+                  contraSpeakerPoints: m.contraSpeakerPoints || {},
                   completed: false
                 };
+              })
+            };
+          }));
+        }
+
+        // ✅ NUEVO: editar puntos de orador por match
+        function updSpeakerPoints(ri, mi, side, speakerId, value){
+          setRounds(prev => prev.map((r, rIdx)=>{
+            if(rIdx !== ri) return r;
+            return {
+              ...r,
+              matches: (r.matches||[]).map((m, mIdx)=>{
+                if(mIdx !== mi) return m;
+                const key = side === "favor" ? "favorSpeakerPoints" : "contraSpeakerPoints";
+                const cur = {...(m[key]||{})};
+                const v = value === "" ? "" : Number(value);
+                cur[speakerId] = v;
+                return { ...m, [key]: cur };
               })
             };
           }));
@@ -645,7 +679,7 @@
         }
 
         // =======================
-        // ✅ COMPUTED (igual que antes)
+        // ✅ COMPUTED (equipos)
         // =======================
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
@@ -739,7 +773,7 @@
         const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
 
         // =======================
-        // Pairings (igual, pero usando assignSidesForRound con inversión en rematch)
+        // Pairings
         // =======================
         function genPairings(){
           if(teams.length<2)return alert("Necesitas al menos 2 equipos");
@@ -888,8 +922,7 @@
           if(!confirm("¿Eliminar este enfrentamiento?"))return;
           setRounds(rounds.map((r,rIdx)=>rIdx!==ri?r:{...r,matches:(r.matches||[]).filter((_,mIdx)=>mIdx!==mi)}));
         }
-
-        function exportStandings(){
+                function exportStandings(){
           xlsxExport(standings.map((t,i)=>({
             "Posición":i+1,
             "Equipo":t.name,
@@ -1296,7 +1329,7 @@
                       value={cfg.sideAssignmentMode}
                       onChange={e=>setCfg({...cfg, sideAssignmentMode: e.target.value })}
                     >
-                      <option value="balanceado">Automática (balanceada)</option>
+                      <option value="balanceado">Automática (balanceada + alternancia)</option>
                       <option value="sin_asignar">No asignar (se sortea fuera)</option>
                     </select>
                   </div>
@@ -1361,7 +1394,7 @@
                                 <div className="speakerRow" key={s.id}>
                                   <input placeholder={`Orador ${i+1}`} value={s.name||""} onChange={e=>updSpk(t.id,s.id,"name",e.target.value)}/>
                                   <select value={s.role||"Libre"} onChange={e=>updSpk(t.id,s.id,"role",e.target.value)}>{ROLES.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select>
-                                  <input type="number" placeholder="Puntos" value={String(s.points??0)} onChange={e=>updSpk(t.id,s.id,"points",Number(e.target.value))}/>
+                                  <input type="number" placeholder="(ref.)" value={String(s.points??0)} onChange={e=>updSpk(t.id,s.id,"points",Number(e.target.value))}/>
                                 </div>
                               ))}
                             </div>
@@ -1374,8 +1407,7 @@
                 )}
               </div>
             )}
-
-            {/* GRUPOS */}
+                        {/* GRUPOS */}
             {tab==="grupos" && cfg.tournamentSystem==="grupos" && (
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -1643,7 +1675,7 @@
                         <div className="toolbar" style={{justifyContent:"space-between",marginBottom:12}}>
                           <h3 style={{margin:0}}>{rounds[curRound]?.name||`Ronda ${rounds[curRound]?.number}`}</h3>
                           <span className="muted small">
-                            Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada)"}</b> · Desempate: <b>{cfg.tiebreak}</b>
+                            Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada + alternancia)"}</b> · Desempate: <b>{cfg.tiebreak}</b>
                           </span>
                         </div>
 
@@ -1655,6 +1687,9 @@
 
                             const fav = m.sidesAssigned ? computed.find(t=>t.id===m.aFavor) : null;
                             const con = m.sidesAssigned ? computed.find(t=>t.id===m.enContra) : null;
+
+                            const favTeam = m.sidesAssigned ? teams.find(t=>t.id===m.aFavor) : null;
+                            const conTeam = m.sidesAssigned ? teams.find(t=>t.id===m.enContra) : null;
 
                             return(
                               <div key={m.id} style={{border:"1px solid #eee",borderRadius:10,padding:"12px 14px",background:"#fff"}}>
@@ -1736,6 +1771,65 @@
                                     </div>
                                   </div>
                                 </div>
+
+                                {/* ✅ NUEVO: PUNTOS DE ORADORES POR RONDA */}
+                                {m.sidesAssigned && (
+                                  <div className="toast" style={{marginTop:12}}>
+                                    <b>🗣️ Puntos de oradores (esta ronda)</b>
+                                    <div className="muted small" style={{marginTop:6}}>
+                                      Estos puntos se usan para el <b>ranking de oradores</b>. (Independientes de los puntos del match.)
+                                    </div>
+
+                                    <div className="row cols2" style={{marginTop:10}}>
+                                      <div>
+                                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
+                                          <span className="vs-badge">A FAVOR</span>
+                                          <b>{favTeam?.name || "—"}</b>
+                                        </div>
+                                        <div className="stack">
+                                          {(favTeam?.speakers||[]).map(sp=>(
+                                            <div key={sp.id} className="miniGrid">
+                                              <div className="wrap">
+                                                <b>{sp.name || "—"}</b>
+                                                <span className="muted small">{sp.role?` · ${sp.role}`:""}</span>
+                                              </div>
+                                              <input
+                                                type="number"
+                                                value={(m.favorSpeakerPoints||{})[sp.id] ?? ""}
+                                                onChange={e=>updSpeakerPoints(curRound, idx, "favor", sp.id, e.target.value)}
+                                                placeholder="Pts"
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
+                                          <span className="vs-badge" style={{background:"#1d4ed8"}}>EN CONTRA</span>
+                                          <b>{conTeam?.name || "—"}</b>
+                                        </div>
+                                        <div className="stack">
+                                          {(conTeam?.speakers||[]).map(sp=>(
+                                            <div key={sp.id} className="miniGrid">
+                                              <div className="wrap">
+                                                <b>{sp.name || "—"}</b>
+                                                <span className="muted small">{sp.role?` · ${sp.role}`:""}</span>
+                                              </div>
+                                              <input
+                                                type="number"
+                                                value={(m.contraSpeakerPoints||{})[sp.id] ?? ""}
+                                                onChange={e=>updSpeakerPoints(curRound, idx, "contra", sp.id, e.target.value)}
+                                                placeholder="Pts"
+                                              />
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
                               </div>
                             );
                           })}
@@ -1835,7 +1929,7 @@
 
                         <div className="hr"></div>
                         <h3>Ranking de oradores (general)</h3>
-                        <SpeakerRanking computed={computed}/>
+                        <SpeakerRanking computed={computed} rounds={rounds}/>
                       </>
                     ) : (
                       <>
@@ -1856,7 +1950,7 @@
 
                         <div className="hr"></div>
                         <h3>Ranking de oradores</h3>
-                        <SpeakerRanking computed={computed}/>
+                        <SpeakerRanking computed={computed} rounds={rounds}/>
                       </>
                     )}
                   </>
@@ -1873,11 +1967,34 @@
         );
       }
 
-      function SpeakerRanking({computed}){
+      // ✅ Ranking de oradores SUMANDO puntos por ronda (favorSpeakerPoints/contraSpeakerPoints)
+      function SpeakerRanking({computed, rounds}){
         const [role,setRole]=useState("TODOS");
-        const list=[];
-        for(const t of computed) for(const s of (t.speakers||[])) list.push({id:s.id,name:s.name||"",role:s.role||"",points:Number(s.points||0),teamName:t.name,school:t.school});
-        const filtered=(role==="TODOS"?list:list.filter(s=>s.role===role)).filter(s=>s.name.trim()).sort((a,b)=>b.points!==a.points?b.points-a.points:a.name.localeCompare(b.name));
+
+        const map = new Map();
+        for(const t of (computed||[])){
+          for(const s of (t.speakers||[])){
+            map.set(s.id, {id:s.id,name:s.name||"",role:s.role||"",points:0,teamName:t.name,school:t.school});
+          }
+        }
+
+        for(const r of (rounds||[])){
+          for(const m of (r.matches||[])){
+            for(const [sid,val] of Object.entries(m.favorSpeakerPoints||{})){
+              const row = map.get(sid);
+              if(row && val!=="" && Number.isFinite(Number(val))) row.points += Number(val);
+            }
+            for(const [sid,val] of Object.entries(m.contraSpeakerPoints||{})){
+              const row = map.get(sid);
+              if(row && val!=="" && Number.isFinite(Number(val))) row.points += Number(val);
+            }
+          }
+        }
+
+        const list=Array.from(map.values()).filter(s=>s.name.trim());
+        const filtered=(role==="TODOS"?list:list.filter(s=>s.role===role))
+          .sort((a,b)=>b.points!==a.points?b.points-a.points:a.name.localeCompare(b.name));
+
         return(
           <div>
             <div style={{marginBottom:10}}><label>Filtrar por rol</label>
@@ -1909,3 +2026,7 @@
     </script>
   </body>
 </html>
+
+            
+
+
