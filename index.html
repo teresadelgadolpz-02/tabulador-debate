@@ -159,13 +159,27 @@
         return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
       }
 
-      const ROLES = [
+      const DEBATE_ROLES = [
         {value:"Introductor",label:"Introductor"},
         {value:"Primer refutador",label:"Primer refutador"},
         {value:"Segundo refutador",label:"Segundo refutador"},
         {value:"Conclusor",label:"Conclusor"},
         {value:"Libre",label:"Libre (5º orador)"}
       ];
+      const ORATORIA_ROLES = [
+        {value:"Primer orador",label:"Primer orador"},
+        {value:"Segundo orador",label:"Segundo orador"},
+        {value:"Tercer orador",label:"Tercer orador"},
+        {value:"Cuarto orador",label:"Cuarto orador"},
+        {value:"Quinto orador",label:"Quinto orador"}
+      ];
+      function getRoleOptions(system){
+        return system === "oratoria" ? ORATORIA_ROLES : DEBATE_ROLES;
+      }
+      function getDefaultRoles(system, n){
+        const roles = getRoleOptions(system).map(r=>r.value);
+        return Array.from({length:n}).map((_,i)=>roles[i] || `Orador ${i+1}`);
+      }
       const TIEBREAKS = [
         "Enfrentamiento directo > Ítems","Ítems > Enfrentamiento directo",
         "Enfrentamiento directo > Ítems > Votos","Enfrentamiento directo > Votos > Ítems",
@@ -205,7 +219,8 @@
           groupSize:4,
           speakersPerTeam:2,
           tiebreak:"Ítems > Enfrentamiento directo",
-          sideAssignmentMode:"balanceado" // "balanceado" | "sin_asignar"
+          sideAssignmentMode:"balanceado", // "balanceado" | "sin_asignar"
+          speechRounds:3
         });
 
         const [teams, setTeams] = useState([]);
@@ -250,17 +265,28 @@
         },[auth,user,sync]);
 
         // Speakers helpers
-        function mkSpeakers(n) {
-          const rs=["Introductor","Primer refutador","Segundo refutador","Conclusor","Libre"];
-          return Array.from({length:n}).map((_,i)=>({id:uid()+i,name:"",role:rs[i]||"Libre",points:0}));
+        function mkSpeakers(n, system=cfg.tournamentSystem) {
+          const rs=getDefaultRoles(system, n);
+          return Array.from({length:n}).map((_,i)=>({id:uid()+i,name:"",role:rs[i]||`Orador ${i+1}`,points:0}));
+        }
+        function normalizeTeamRolesForSystem(ts, system, speakersPerTeam=cfg.speakersPerTeam) {
+          const roles = getDefaultRoles(system, Math.max(2,Math.min(5,Number(speakersPerTeam||2))));
+          return (ts||[]).map(t=>({
+            ...t,
+            speakers:(Array.isArray(t.speakers)?t.speakers:[]).map((s,i)=>({
+              ...s,
+              role: roles[i] || `Orador ${i+1}`
+            }))
+          }));
         }
         function normTeams(ts,n) {
           const c=Math.max(2,Math.min(5,Number(n||2)));
+          const roles=getDefaultRoles(cfg.tournamentSystem, c);
           return ts.map(t=>{
             const sp=[...(Array.isArray(t.speakers)?t.speakers:[])];
-            if(sp.length<c) sp.push(...mkSpeakers(c-sp.length));
+            if(sp.length<c) sp.push(...mkSpeakers(c-sp.length, cfg.tournamentSystem));
             else if(sp.length>c) sp.length=c;
-            return {...t,speakers:sp};
+            return {...t,speakers:sp.map((s,i)=>({...s,role:s?.role || roles[i] || `Orador ${i+1}`}))};
           });
         }
 
@@ -329,7 +355,8 @@
             groupSize:4,
             speakersPerTeam:2,
             tiebreak:"Ítems > Enfrentamiento directo",
-            sideAssignmentMode:"balanceado"
+            sideAssignmentMode:"balanceado",
+            speechRounds:3
           });
           setTeams([]);setRounds([]);setRooms([]);setJudges([]);setGroups([]);setCurRound(0);
         }
@@ -678,11 +705,37 @@
           });
         }
 
+        function getOratoryTeamPoints(teamId){
+          let total = 0;
+          for(const r of (rounds||[])){
+            for(const m of (r.matches||[])){
+              if(m?.entryTeamId !== teamId) continue;
+              for(const val of Object.values(m.speakerPoints||{})){
+                if(val !== "" && Number.isFinite(Number(val))) total += Number(val);
+              }
+            }
+          }
+          return total;
+        }
+
         // =======================
         // ✅ COMPUTED (equipos)
         // =======================
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
+
+          if(cfg.tournamentSystem === "oratoria") {
+            return ts.map(t=>({
+              ...t,
+              wins: 0,
+              points: getOratoryTeamPoints(t.id),
+              itemsWon: getOratoryTeamPoints(t.id),
+              votesWon: 0,
+              opponents: [],
+              positions: {afavor:0,enContra:0}
+            }));
+          }
+
           const map=new Map();
           ts.forEach(t=>map.set(t.id,{
             ...t,
@@ -739,7 +792,7 @@
           }
 
           return Array.from(map.values());
-        },[teams,rounds,cfg.speakersPerTeam]);
+        },[teams,rounds,cfg.speakersPerTeam,cfg.tournamentSystem]);
 
         function h2h(Aid,Bid){
           for(const r of rounds) for(const m of (r.matches||[])){
@@ -758,6 +811,10 @@
         }
 
         function cmp(a,b){
+          if(cfg.tournamentSystem === "oratoria") {
+            if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
+            return String(a.name||"").localeCompare(String(b.name||""));
+          }
           if((b.wins||0)!==(a.wins||0)) return (b.wins||0)-(a.wins||0);
           if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
 
@@ -780,17 +837,20 @@
           let ms=[];
           if(cfg.tournamentSystem==="suizo") ms=genSwiss();
           else if(cfg.tournamentSystem==="aleatorio") ms=genRandom();
-          else ms=genGroups();
+          else if(cfg.tournamentSystem==="grupos") ms=genGroups();
+          else ms=genOratoryRound();
 
-          ms = assignRJ(ms);
+          if(cfg.tournamentSystem !== "oratoria"){
+            ms = assignRJ(ms);
 
-          if(cfg.sideAssignmentMode !== "sin_asignar"){
-            ms = assignSidesForRound(ms, computed);
+            if(cfg.sideAssignmentMode !== "sin_asignar"){
+              ms = assignSidesForRound(ms, computed);
+            }
           }
 
           const nr={
             number:rounds.length+1,
-            name:`Ronda ${rounds.length+1}`,
+            name: cfg.tournamentSystem==="oratoria" ? `Prueba ${rounds.length+1}` : `Ronda ${rounds.length+1}`,
             matches:ms,
             isClassificatory:rounds.length<Number(cfg.roundsClasif||0),
             sideMode: cfg.sideAssignmentMode
@@ -844,6 +904,15 @@
             return buildGroupRoundMatches(ng, t2, 0);
           }
           return buildGroupRoundMatches(groups, teams, rounds.length);
+        }
+
+        function genOratoryRound(){
+          return normTeams(teams,cfg.speakersPerTeam).map(t=>({
+            id: uid(),
+            entryTeamId: t.id,
+            speakerPoints: {},
+            completed: false
+          }));
         }
 
         function assignRJ(ms){
@@ -909,14 +978,17 @@
           let ms=[];
           if(cfg.tournamentSystem==="suizo") ms=genSwiss();
           else if(cfg.tournamentSystem==="aleatorio") ms=genRandom();
-          else ms=genGroups();
+          else if(cfg.tournamentSystem==="grupos") ms=genGroups();
+          else ms=genOratoryRound();
 
-          ms = assignRJ(ms);
-          if(cfg.sideAssignmentMode !== "sin_asignar"){
-            ms = assignSidesForRound(ms, computed);
+          if(cfg.tournamentSystem !== "oratoria"){
+            ms = assignRJ(ms);
+            if(cfg.sideAssignmentMode !== "sin_asignar"){
+              ms = assignSidesForRound(ms, computed);
+            }
           }
 
-          setRounds(rounds.map((r,i)=>i===idx?{...r,matches:ms,sideMode:cfg.sideAssignmentMode}:r));
+          setRounds(rounds.map((r,i)=>i===idx?{...r,matches:ms,sideMode:cfg.sideAssignmentMode,name:cfg.tournamentSystem==="oratoria"?`Prueba ${idx+1}`:(r.name||`Ronda ${idx+1}`)}:r));
         }
         function deleteMatch(ri,mi){
           if(!confirm("¿Eliminar este enfrentamiento?"))return;
@@ -1304,26 +1376,36 @@
                       onChange={e=>{
                         const next = e.target.value;
                         setCfg({...cfg,tournamentSystem:next});
+                        setTeams(prev=>{
+                          const cleaned = next!=="grupos"
+                            ? prev.map(t=>{ const nt={...t}; delete nt.groupId; return nt; })
+                            : prev;
+                          return normalizeTeamRolesForSystem(cleaned, next, cfg.speakersPerTeam);
+                        });
                         if(next!=="grupos"){
                           setGroups([]);
-                          setTeams(prev=>prev.map(t=>{ const nt={...t}; delete nt.groupId; return nt; }));
                           if(tab==="grupos") setTab("config");
+                        }
+                        if(next === "oratoria"){
+                          setRounds([]);
+                          setCurRound(0);
                         }
                       }}
                     >
                       <option value="suizo">Suizo</option>
                       <option value="aleatorio">Aleatorio</option>
                       <option value="grupos">Grupos</option>
+                      <option value="oratoria">Oratoria</option>
                     </select>
                   </div>
 
-                  <div><label>Permitir repetición</label>
+                  {cfg.tournamentSystem!=="oratoria" && <div><label>Permitir repetición</label>
                     <select value={String(cfg.allowRepeatMatchups)} onChange={e=>setCfg({...cfg,allowRepeatMatchups:e.target.value==="true"})}>
                       <option value="false">No</option><option value="true">Sí</option>
                     </select>
-                  </div>
+                  </div>}
 
-                  <div>
+                  {cfg.tournamentSystem!=="oratoria" && <div>
                     <label>Asignación A favor / En contra</label>
                     <select
                       value={cfg.sideAssignmentMode}
@@ -1332,7 +1414,7 @@
                       <option value="balanceado">Automática (balanceada + alternancia)</option>
                       <option value="sin_asignar">No asignar (se sortea fuera)</option>
                     </select>
-                  </div>
+                  </div>}
 
                   <div><label>Nº oradores por equipo (2–5)</label>
                     <select value={String(cfg.speakersPerTeam)} onChange={e=>{const v=Math.max(2,Math.min(5,Number(e.target.value)));setCfg({...cfg,speakersPerTeam:v});setTeams(prev=>normTeams(prev,v));}}>
@@ -1340,11 +1422,13 @@
                     </select>
                   </div>
 
-                  <div style={{gridColumn:"span 2"}}><label>Criterio de desempate (solo si empatan en victorias y puntos)</label>
+                  {cfg.tournamentSystem!=="oratoria" && <div style={{gridColumn:"span 2"}}><label>Criterio de desempate (solo si empatan en victorias y puntos)</label>
                     <select value={cfg.tiebreak} onChange={e=>setCfg({...cfg,tiebreak:e.target.value})}>
                       {TIEBREAKS.map(o=><option key={o} value={o}>{o}</option>)}
                     </select>
-                  </div>
+                  </div>}
+
+                  {cfg.tournamentSystem==="oratoria" && <div><label>Nº de pruebas</label><input type="number" min="1" value={cfg.speechRounds} onChange={e=>setCfg({...cfg,speechRounds:Math.max(1,Number(e.target.value||1))})}/></div>}
 
                   {cfg.tournamentSystem==="grupos"&&<>
                     <div><label>Nº de grupos</label><input type="number" value={cfg.numGroups} onChange={e=>{
@@ -1367,7 +1451,7 @@
                 </div>
                 <div className="hr"></div>
                 <div className="toolbar" style={{justifyContent:"flex-end"}}>
-                  <button className="primary" onClick={genPairings} disabled={computed.length<2}>🧩 Generar emparejamientos (nueva ronda)</button>
+                  <button className="primary" onClick={genPairings} disabled={computed.length<2 || (cfg.tournamentSystem==="oratoria" && rounds.length>=Number(cfg.speechRounds||1))}>{cfg.tournamentSystem==="oratoria" ? "🗣️ Generar prueba" : "🧩 Generar emparejamientos (nueva ronda)"}</button>
                 </div>
               </div>
             )}
@@ -1393,7 +1477,7 @@
                               {(t.speakers||[]).map((s,i)=>(
                                 <div className="speakerRow" key={s.id}>
                                   <input placeholder={`Orador ${i+1}`} value={s.name||""} onChange={e=>updSpk(t.id,s.id,"name",e.target.value)}/>
-                                  <select value={s.role||"Libre"} onChange={e=>updSpk(t.id,s.id,"role",e.target.value)}>{ROLES.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select>
+                                  <select value={s.role||"Libre"} onChange={e=>updSpk(t.id,s.id,"role",e.target.value)}>{getRoleOptions(cfg.tournamentSystem).map(r=><option key={r.value} value={r.value}>{r.label}</option>)}</select>
                                   <input type="number" placeholder="(ref.)" value={String(s.points??0)} onChange={e=>updSpk(t.id,s.id,"points",Number(e.target.value))}/>
                                 </div>
                               ))}
@@ -1624,9 +1708,9 @@
             {tab==="rondas"&&(
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
-                  <h2 style={{margin:0}}>Rondas</h2>
+                  <h2 style={{margin:0}}>{cfg.tournamentSystem==="oratoria"?"Pruebas":"Rondas"}</h2>
                   <div className="toolbar">
-                    <button className="primary" onClick={genPairings} disabled={computed.length<2}>➕ Nueva ronda</button>
+                    <button className="primary" onClick={genPairings} disabled={computed.length<2 || (cfg.tournamentSystem==="oratoria" && rounds.length>=Number(cfg.speechRounds||1))}>{cfg.tournamentSystem==="oratoria"?"➕ Nueva prueba":"➕ Nueva ronda"}</button>
                     <button className="sm" onClick={()=>{ if(rounds.length===0) return alert("No hay rondas."); exportRoundPDF(curRound); }}>
                       📄 PDF (ronda)
                     </button>
@@ -1636,7 +1720,7 @@
 
                 <div className="spacer"></div>
 
-                {rounds.length===0?<div className="muted">No hay rondas. Pulsa "Nueva ronda".</div>:(
+                {rounds.length===0?<div className="muted">{cfg.tournamentSystem==="oratoria" ? "No hay pruebas. Pulsa ‘Nueva prueba’." : "No hay rondas. Pulsa ‘Nueva ronda’."}</div>:(
                   <>
                     <div className="stack" style={{marginBottom:12}}>
                       {rounds.map((r,idx)=>{
@@ -1653,8 +1737,8 @@
                                 />
                               ):<b>{r.name||`Ronda ${r.number}`}</b>}
                               <span className={"pill "+(comp===tot&&tot>0?"green":comp>0?"orange":"")}>{comp}/{tot} completados</span>
-                              {r.isClassificatory&&<span className="pill">Clasificatoria</span>}
-                              {r.sideMode && <span className="pill blue">Lados: {r.sideMode==="sin_asignar"?"No asignar":"Automática"}</span>}
+                              {cfg.tournamentSystem!=="oratoria" && r.isClassificatory&&<span className="pill">Clasificatoria</span>}
+                              {cfg.tournamentSystem!=="oratoria" && r.sideMode && <span className="pill blue">Lados: {r.sideMode==="sin_asignar"?"No asignar":"Automática"}</span>}
                             </div>
                             <div className="toolbar" onClick={e=>e.stopPropagation()}>
                               {editRnd===idx?(
@@ -1674,13 +1758,53 @@
                       <>
                         <div className="toolbar" style={{justifyContent:"space-between",marginBottom:12}}>
                           <h3 style={{margin:0}}>{rounds[curRound]?.name||`Ronda ${rounds[curRound]?.number}`}</h3>
-                          <span className="muted small">
-                            Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada + alternancia)"}</b> · Desempate: <b>{cfg.tiebreak}</b>
-                          </span>
+                          <span className="muted small">{cfg.tournamentSystem==="oratoria" ? <>Prueba <b>{curRound+1}</b> de <b>{cfg.speechRounds}</b></> : <>Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada + alternancia)"}</b> · Desempate: <b>{cfg.tiebreak}</b></>}</span>
                         </div>
 
                         <div className="stack">
                           {(rounds[curRound]?.matches||[]).map((m,idx)=>{
+                            if(cfg.tournamentSystem === "oratoria"){
+                              const team = teams.find(t=>t.id===m.entryTeamId);
+                              const teamComputed = computed.find(t=>t.id===m.entryTeamId);
+                              const totalEntry = Object.values(m.speakerPoints||{}).reduce((acc,val)=>acc + ((val!=="" && Number.isFinite(Number(val))) ? Number(val) : 0), 0);
+                              return(
+                                <div key={m.id} style={{border:"1px solid #eee",borderRadius:10,padding:"12px 14px",background:"#fff"}}>
+                                  <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,flexWrap:"wrap",marginBottom:10}}>
+                                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",flex:1}}>
+                                      <span className="muted small">Equipo {idx+1}</span>
+                                      <b>{team?.name||"—"}</b>
+                                      {team?.school&&<span className="muted small">{team.school}</span>}
+                                      <span className="pill blue">Total prueba: {totalEntry}</span>
+                                      <span className="pill">Total torneo: {teamComputed?.points||0}</span>
+                                    </div>
+                                    <div className="toolbar">
+                                      <button className="danger sm" onClick={()=>deleteMatch(curRound,idx)}>🗑️</button>
+                                    </div>
+                                  </div>
+                                  <div className="toast">
+                                    <b>🗣️ Puntuación de oradores</b>
+                                    <div className="muted small" style={{marginTop:6}}>Introduce la puntuación de cada orador en esta prueba. El ranking del equipo es la suma de todos estos puntos.</div>
+                                    <div className="stack" style={{marginTop:10}}>
+                                      {(team?.speakers||[]).map(sp=>(
+                                        <div key={sp.id} className="miniGrid">
+                                          <div className="wrap">
+                                            <b>{sp.name || "—"}</b>
+                                            <span className="muted small">{sp.role?` · ${sp.role}`:""}</span>
+                                          </div>
+                                          <input
+                                            type="number"
+                                            value={(m.speakerPoints||{})[sp.id] ?? ""}
+                                            onChange={e=>setRounds(prev=>prev.map((rr,rIdx)=>rIdx!==curRound?rr:{...rr,matches:(rr.matches||[]).map((mm,mIdx)=>{if(mIdx!==idx) return mm; const cur={...(mm.speakerPoints||{})}; const v=e.target.value===""?"":Number(e.target.value); cur[sp.id]=v; return {...mm,speakerPoints:cur,completed:true};})}))}
+                                            placeholder="Pts"
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+
                             const [id1,id2] = getTeamIdsFromMatch(m);
                             const t1 = computed.find(t=>t.id===id1);
                             const t2 = computed.find(t=>t.id===id2);
@@ -1836,7 +1960,7 @@
                         </div>
 
                         <div className="muted small" style={{marginTop:10}}>
-                          * "Completado" cuando hay puntos en ambos lados y los lados están asignados. Los votos son opcionales.
+                          {cfg.tournamentSystem==="oratoria" ? "* Cada prueba suma las puntuaciones de todos los oradores del equipo." : "* Completado cuando hay puntos en ambos lados y los lados están asignados. Los votos son opcionales."}
                         </div>
                       </>
                     )}
@@ -1863,14 +1987,40 @@
                 ) : (
                   <>
                     <div className="toast" style={{marginBottom:12}}>
-                      <b>Orden del ranking:</b> <b>Victorias</b> → <b>Puntos</b>
-                      <div className="muted small" style={{marginTop:6}}>
-                        Un equipo suma <b>1 victoria</b> si en el match completado sus puntos son mayores que los del rival.
-                        Si empatan en victorias y puntos, se aplica: <b>{cfg.tiebreak}</b>.
-                      </div>
+                      {cfg.tournamentSystem === "oratoria" ? <>
+                        <b>Orden del ranking:</b> <b>Puntos</b>
+                        <div className="muted small" style={{marginTop:6}}>
+                          En oratoria, el ranking del equipo es la suma de las puntuaciones de todos sus oradores en todas las pruebas.
+                        </div>
+                      </> : <>
+                        <b>Orden del ranking:</b> <b>Victorias</b> → <b>Puntos</b>
+                        <div className="muted small" style={{marginTop:6}}>
+                          Un equipo suma <b>1 victoria</b> si en el match completado sus puntos son mayores que los del rival.
+                          Si empatan en victorias y puntos, se aplica: <b>{cfg.tiebreak}</b>.
+                        </div>
+                      </>}
                     </div>
 
-                    {cfg.tournamentSystem==="grupos" ? (
+                    {cfg.tournamentSystem==="oratoria" ? (
+                      <>
+                        <h3 style={{marginTop:0}}>Ranking de equipos</h3>
+                        <div className="table-wrap"><table>
+                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Puntos</th></tr></thead>
+                          <tbody>{standings.map((t,i)=>(
+                            <tr key={t.id}>
+                              <td><b>{i+1}</b></td>
+                              <td className="wrap">{t.name}</td>
+                              <td className="wrap muted">{t.school}</td>
+                              <td><b>{t.points||0}</b></td>
+                            </tr>
+                          ))}</tbody>
+                        </table></div>
+
+                        <div className="hr"></div>
+                        <h3>Ranking de oradores</h3>
+                        <SpeakerRanking computed={computed} rounds={rounds} tournamentSystem={cfg.tournamentSystem}/>
+                      </>
+                    ) : cfg.tournamentSystem==="grupos" ? (
                       <>
                         <h3 style={{marginTop:0}}>Ranking por grupos</h3>
                         <div className="row cols2">
@@ -1929,7 +2079,7 @@
 
                         <div className="hr"></div>
                         <h3>Ranking de oradores (general)</h3>
-                        <SpeakerRanking computed={computed} rounds={rounds}/>
+                        <SpeakerRanking computed={computed} rounds={rounds} tournamentSystem={cfg.tournamentSystem}/>
                       </>
                     ) : (
                       <>
@@ -1950,7 +2100,7 @@
 
                         <div className="hr"></div>
                         <h3>Ranking de oradores</h3>
-                        <SpeakerRanking computed={computed} rounds={rounds}/>
+                        <SpeakerRanking computed={computed} rounds={rounds} tournamentSystem={cfg.tournamentSystem}/>
                       </>
                     )}
                   </>
@@ -1968,7 +2118,7 @@
       }
 
       // ✅ Ranking de oradores SUMANDO puntos por ronda (favorSpeakerPoints/contraSpeakerPoints)
-      function SpeakerRanking({computed, rounds}){
+      function SpeakerRanking({computed, rounds, tournamentSystem}){
         const [role,setRole]=useState("TODOS");
 
         const map = new Map();
@@ -1978,15 +2128,26 @@
           }
         }
 
-        for(const r of (rounds||[])){
-          for(const m of (r.matches||[])){
-            for(const [sid,val] of Object.entries(m.favorSpeakerPoints||{})){
-              const row = map.get(sid);
-              if(row && val!=="" && Number.isFinite(Number(val))) row.points += Number(val);
+        if(tournamentSystem === "oratoria"){
+          for(const r of (rounds||[])){
+            for(const m of (r.matches||[])){
+              for(const [sid,val] of Object.entries(m.speakerPoints||{})){
+                const row = map.get(sid);
+                if(row && val!=="" && Number.isFinite(Number(val))) row.points += Number(val);
+              }
             }
-            for(const [sid,val] of Object.entries(m.contraSpeakerPoints||{})){
-              const row = map.get(sid);
-              if(row && val!=="" && Number.isFinite(Number(val))) row.points += Number(val);
+          }
+        } else {
+          for(const r of (rounds||[])){
+            for(const m of (r.matches||[])){
+              for(const [sid,val] of Object.entries(m.favorSpeakerPoints||{})){
+                const row = map.get(sid);
+                if(row && val!=="" && Number.isFinite(Number(val))) row.points += Number(val);
+              }
+              for(const [sid,val] of Object.entries(m.contraSpeakerPoints||{})){
+                const row = map.get(sid);
+                if(row && val!=="" && Number.isFinite(Number(val))) row.points += Number(val);
+              }
             }
           }
         }
@@ -2000,7 +2161,7 @@
             <div style={{marginBottom:10}}><label>Filtrar por rol</label>
               <select value={role} onChange={e=>setRole(e.target.value)} style={{maxWidth:240}}>
                 <option value="TODOS">Todos (general)</option>
-                {ROLES.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
+                {getRoleOptions(tournamentSystem).map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
             </div>
             {filtered.length===0?<div className="muted">No hay oradores con nombre.</div>:(
