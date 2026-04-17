@@ -117,7 +117,6 @@
       document.getElementById("companyLogo").onerror = () => { document.getElementById("companyLogo").style.display="none"; };
       document.getElementById("companyName").textContent = "Un proyecto de " + (window.COMPANY_NAME || "Learn By Talking Formación");
 
-      // ===== SUPABASE (fetch directo, sin SDK) =====
       const SB = window.SUPABASE_URL;
       const KEY = window.SUPABASE_KEY;
       function hdr(extra={}) {
@@ -188,7 +187,6 @@
       ];
 
       function App() {
-        // Auth
         const [auth, setAuth] = useState(false);
         const [user, setUser] = useState(null);
         const [loginF, setLoginF] = useState({email:"",password:""});
@@ -197,29 +195,27 @@
         const [authErr, setAuthErr] = useState("");
         const [authLoad, setAuthLoad] = useState(false);
 
-        // Sync
         const [sync, setSync] = useState("ok");
         const saveT = useRef(null);
 
-        // Toast
         const [toast, setToast] = useState(null);
         function showToast(title, msg, ms=5500) {
           setToast({title,msg}); clearTimeout(window.__tt);
           window.__tt = setTimeout(()=>setToast(null),ms);
         }
 
-        // State
         const [cfg, setCfg] = useState({
           tournamentName:"",
           roundsClasif:6,
           roundsFinales:4,
           tournamentSystem:"suizo",
+          swissPairingMode:"wins_then_points", // wins_then_points | points_only
           allowRepeatMatchups:false,
           numGroups:4,
           groupSize:4,
           speakersPerTeam:2,
           tiebreak:"Ítems > Enfrentamiento directo",
-          sideAssignmentMode:"balanceado", // "balanceado" | "sin_asignar"
+          sideAssignmentMode:"balanceado",
           speechRounds:3
         });
 
@@ -264,7 +260,6 @@
           ReactDOM.createRoot(node).render(<H/>);
         },[auth,user,sync]);
 
-        // Speakers helpers
         function mkSpeakers(n, system=cfg.tournamentSystem) {
           const rs=getDefaultRoles(system, n);
           return Array.from({length:n}).map((_,i)=>({id:uid()+i,name:"",role:rs[i]||`Orador ${i+1}`,points:0}));
@@ -290,7 +285,6 @@
           });
         }
 
-        // Auth
         async function login() {
           setAuthErr(""); setAuthLoad(true);
           try {
@@ -323,10 +317,8 @@
           resetData();setTab("torneos");setIsReg(false);setToast(null);setSync("ok");
         }
 
-        // Persistence
         async function loadTournaments() {
-          try { const rows=await db.getTournaments(user.id); setTournaments(rows||[]); } catch(e){console.error(e);}
-        }
+          try { const rows=await db.getTournaments(user.id); setTournaments(rows||[]); } catch(e){console.error(e);} }
         async function doSave() {
           const row={id:tid,user_id:user.id,name:cfg.tournamentName||"Torneo sin nombre",data:JSON.stringify({cfg,teams,rounds,rooms,judges,groups,curRound}),last_modified:new Date().toISOString()};
           await db.upsertTournament(row);
@@ -334,8 +326,23 @@
         }
         function openTournament(row) {
           const d=typeof row.data==="string"?JSON.parse(row.data):(row.data||{});
-          setTid(row.id); setCfg(d.cfg||cfg);
-          setTeams(normTeams(d.teams||[],d.cfg?.speakersPerTeam??2));
+          const loadedCfg = {
+            tournamentName:"",
+            roundsClasif:6,
+            roundsFinales:4,
+            tournamentSystem:"suizo",
+            swissPairingMode:"wins_then_points",
+            allowRepeatMatchups:false,
+            numGroups:4,
+            groupSize:4,
+            speakersPerTeam:2,
+            tiebreak:"Ítems > Enfrentamiento directo",
+            sideAssignmentMode:"balanceado",
+            speechRounds:3,
+            ...(d.cfg||{})
+          };
+          setTid(row.id); setCfg(loadedCfg);
+          setTeams(normTeams(d.teams||[],loadedCfg.speakersPerTeam??2));
           setRounds(d.rounds||[]); setRooms(d.rooms||[]); setJudges(d.judges||[]);
           setGroups(d.groups||[]); setCurRound(d.curRound||0); setTab("config");
           showToast("✅ Torneo cargado","Revisa ⚙️ Config, luego 👥 Equipos y genera 🧾 Rondas.");
@@ -350,6 +357,7 @@
             roundsClasif:6,
             roundsFinales:4,
             tournamentSystem:"suizo",
+            swissPairingMode:"wins_then_points",
             allowRepeatMatchups:false,
             numGroups:4,
             groupSize:4,
@@ -369,7 +377,6 @@
           } catch(e){alert("Error: "+e.message);}
         }
 
-        // Teams
         function addTeam() {
           const n=Math.max(2,Math.min(5,Number(cfg.speakersPerTeam||2)));
           setTeams(normTeams([...teams,{id:uid(),name:`Equipo ${teams.length+1}`,school:"",speakers:mkSpeakers(n),points:0,itemsWon:0,votesWon:0,opponents:[],positions:{afavor:0,enContra:0}}],n));
@@ -378,7 +385,6 @@
         function updTeam(id,f,v){setTeams(teams.map(t=>t.id===id?{...t,[f]:v}:t));}
         function updSpk(tid2,sid,f,v){setTeams(teams.map(t=>t.id!==tid2?t:{...t,speakers:(t.speakers||[]).map(s=>s.id===sid?{...s,[f]:v}:s)}));}
 
-        // Rooms & Judges
         function addRoom(){setRooms([...rooms,{id:uid(),name:`Sala ${rooms.length+1}`,location:"",capacity:50,available:true}]);}
         function delRoom(id){setRooms(rooms.filter(r=>r.id!==id));}
         function updRoom(id,f,v){setRooms(rooms.map(r=>r.id===id?{...r,[f]:v}:r));}
@@ -386,22 +392,15 @@
         function delJudge(id){setJudges(judges.filter(j=>j.id!==id));}
         function updJudge(id,f,v){setJudges(judges.map(j=>j.id===id?{...j,[f]:v}:j));}
 
-        // Excel
         function xlsxExport(data,sheet,file){const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sheet);XLSX.writeFile(wb,file);}
         function importExcel(e,cb){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});cb(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));};r.readAsArrayBuffer(f);e.target.value="";}
 
-        // Match helpers
         function getTeamIdsFromMatch(m){
           if(!m) return [null,null];
           if(m.sidesAssigned) return [m.aFavor, m.enContra];
           return [m.teamA, m.teamB];
         }
 
-        // ===========================
-        // ✅ ASIGNACIÓN DE LADOS:
-        // - Rematch -> invierte
-        // - Si no: balance global + penaliza repetir lado de la ronda anterior (alternancia)
-        // ===========================
         function getCountsFromComputed(list){
           const m = new Map();
           for(const t of list){
@@ -500,7 +499,6 @@
               enContra: contraId,
               favorItems: null, contraItems: null,
               favorVotes: null, contraVotes: null,
-              // ✅ puntos por orador en ESTA ronda
               favorSpeakerPoints: m.favorSpeakerPoints || {},
               contraSpeakerPoints: m.contraSpeakerPoints || {},
               completed: false
@@ -510,7 +508,6 @@
           return out;
         }
 
-        // ✅ makeMatch: guarda teamA/teamB y bolsas de puntos por orador
         function makeMatch(t1, t2, extra = {}){
           return {
             id: uid(),
@@ -553,7 +550,6 @@
           }));
         }
 
-        // ✅ NUEVO: editar puntos de orador por match
         function updSpeakerPoints(ri, mi, side, speakerId, value){
           setRounds(prev => prev.map((r, rIdx)=>{
             if(rIdx !== ri) return r;
@@ -571,9 +567,6 @@
           }));
         }
 
-        // =======================
-        // GRUPOS (igual que antes)
-        // =======================
         function schoolKey(s){
           const k = String(s||"").trim().toLowerCase();
           return k || "__sin__";
@@ -718,9 +711,6 @@
           return total;
         }
 
-        // =======================
-        // ✅ COMPUTED (equipos)
-        // =======================
         const computed = useMemo(()=>{
           const ts=normTeams(teams,cfg.speakersPerTeam);
 
@@ -815,6 +805,19 @@
             if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
             return String(a.name||"").localeCompare(String(b.name||""));
           }
+
+          if(cfg.tournamentSystem === "suizo" && cfg.swissPairingMode === "points_only"){
+            if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
+            for(const p of String(cfg.tiebreak||"Ítems > Enfrentamiento directo").split(">").map(x=>x.trim())){
+              let v=0;
+              if(p==="Ítems") v = (b.itemsWon||0) - (a.itemsWon||0);
+              else if(p==="Votos") v = (b.votesWon||0) - (a.votesWon||0);
+              else if(p==="Enfrentamiento directo") v = h2h(a.id,b.id) * -1;
+              if(v!==0) return v;
+            }
+            return String(a.name||"").localeCompare(String(b.name||""));
+          }
+
           if((b.wins||0)!==(a.wins||0)) return (b.wins||0)-(a.wins||0);
           if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
 
@@ -827,11 +830,8 @@
           }
           return String(a.name||"").localeCompare(String(b.name||""));
         }
-        const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak]);
+        const standings=useMemo(()=>[...computed].sort(cmp),[computed,rounds,cfg.tiebreak,cfg.tournamentSystem,cfg.swissPairingMode]);
 
-        // =======================
-        // Pairings
-        // =======================
         function genPairings(){
           if(teams.length<2)return alert("Necesitas al menos 2 equipos");
           let ms=[];
@@ -862,7 +862,14 @@
         }
 
         function genSwiss(){
-          const sorted=[...computed].sort(cmp);
+          const sorted = [...computed].sort((a,b)=>{
+            if(cfg.swissPairingMode === "points_only"){
+              if((b.points||0)!==(a.points||0)) return (b.points||0)-(a.points||0);
+              return String(a.name||"").localeCompare(String(b.name||""));
+            }
+            return cmp(a,b);
+          });
+
           const ms=[];
           const paired=new Set();
           for(let i=0;i<sorted.length;i++){
@@ -966,7 +973,6 @@
           }));
         }
 
-        // Round management
         function deleteRound(idx){
           if(!confirm(`¿Eliminar "${rounds[idx]?.name}"?`))return;
           const nr=rounds.filter((_,i)=>i!==idx);
@@ -994,22 +1000,36 @@
           if(!confirm("¿Eliminar este enfrentamiento?"))return;
           setRounds(rounds.map((r,rIdx)=>rIdx!==ri?r:{...r,matches:(r.matches||[]).filter((_,mIdx)=>mIdx!==mi)}));
         }
-                function exportStandings(){
-          xlsxExport(standings.map((t,i)=>({
-            "Posición":i+1,
-            "Equipo":t.name,
-            "Institución":t.school,
-            "Victorias": t.wins || 0,
-            "Puntos (total)": t.points || 0,
-            "Ítems (total)":t.itemsWon,
-            "Votos (total)":t.votesWon,
-            "A favor":t.positions?.afavor||0,
-            "En contra":t.positions?.enContra||0,
-            "Oradores":(t.speakers||[]).map(s=>`${s.name||"-"} (${s.role||"-"})`).join(", ")
-          })),"Clasificación","clasificacion.xlsx");
+        function exportStandings(){
+          xlsxExport(standings.map((t,i)=>(
+            cfg.tournamentSystem === "suizo" && cfg.swissPairingMode === "points_only"
+              ? {
+                  "Posición":i+1,
+                  "Equipo":t.name,
+                  "Institución":t.school,
+                  "Puntos (ranking)": t.points || 0,
+                  "Victorias": t.wins || 0,
+                  "Ítems (total)":t.itemsWon,
+                  "Votos (total)":t.votesWon,
+                  "A favor":t.positions?.afavor||0,
+                  "En contra":t.positions?.enContra||0,
+                  "Oradores":(t.speakers||[]).map(s=>`${s.name||"-"} (${s.role||"-"})`).join(", ")
+                }
+              : {
+                  "Posición":i+1,
+                  "Equipo":t.name,
+                  "Institución":t.school,
+                  "Victorias": t.wins || 0,
+                  "Puntos (total)": t.points || 0,
+                  "Ítems (total)":t.itemsWon,
+                  "Votos (total)":t.votesWon,
+                  "A favor":t.positions?.afavor||0,
+                  "En contra":t.positions?.enContra||0,
+                  "Oradores":(t.speakers||[]).map(s=>`${s.name||"-"} (${s.role||"-"})`).join(", ")
+                }
+          )),"Clasificación","clasificacion.xlsx");
         }
 
-        // ===== PDF helpers =====
         function safeFileName(x){
           return String(x||"").replace(/[^\w\d\- ]+/g,"").trim().replace(/\s+/g,"_") || "archivo";
         }
@@ -1180,7 +1200,11 @@
             doc.setTextColor(0);
           }
 
-          header("Ranking global (Victorias → Puntos)");
+          const globalTitle = cfg.tournamentSystem === "suizo" && cfg.swissPairingMode === "points_only"
+            ? "Ranking global (Puntos)"
+            : "Ranking global (Victorias → Puntos)";
+
+          header(globalTitle);
           const globalRows = standings.map((t,i)=>[
             String(i+1),
             t.name || "—",
@@ -1270,7 +1294,6 @@
           );
         }
 
-        // Auth screen
         if(!auth) return (
           <div className="card">
             <h2 style={{marginTop:0}}>Acceso</h2>
@@ -1300,7 +1323,6 @@
           </div>
         );
 
-        // Main app
         return (
           <div className="row" style={{gap:12}}>
             <div className="card" style={{padding:"12px 14px"}}>
@@ -1328,7 +1350,6 @@
               </div>
             )}
 
-            {/* TORNEOS */}
             {tab==="torneos"&&(
               <div className="card">
                 <h2 style={{marginTop:0}}>Tus torneos</h2>
@@ -1363,7 +1384,6 @@
               </div>
             )}
 
-            {/* CONFIG */}
             {tab==="config"&&(
               <div className="card">
                 <h2 style={{marginTop:0}}>Configuración</h2>
@@ -1399,6 +1419,16 @@
                     </select>
                   </div>
 
+                  {cfg.tournamentSystem==="suizo" && (
+                    <div>
+                      <label>Emparejamiento suizo</label>
+                      <select value={cfg.swissPairingMode} onChange={e=>setCfg({...cfg, swissPairingMode:e.target.value})}>
+                        <option value="wins_then_points">Por victorias y después puntos</option>
+                        <option value="points_only">Por puntos más similares</option>
+                      </select>
+                    </div>
+                  )}
+
                   {cfg.tournamentSystem!=="oratoria" && <div><label>Permitir repetición</label>
                     <select value={String(cfg.allowRepeatMatchups)} onChange={e=>setCfg({...cfg,allowRepeatMatchups:e.target.value==="true"})}>
                       <option value="false">No</option><option value="true">Sí</option>
@@ -1422,11 +1452,25 @@
                     </select>
                   </div>
 
-                  {cfg.tournamentSystem!=="oratoria" && <div style={{gridColumn:"span 2"}}><label>Criterio de desempate (solo si empatan en victorias y puntos)</label>
+                  {cfg.tournamentSystem!=="oratoria" && <div style={{gridColumn:"span 2"}}><label>Criterio de desempate (solo si empatan en el criterio principal)</label>
                     <select value={cfg.tiebreak} onChange={e=>setCfg({...cfg,tiebreak:e.target.value})}>
                       {TIEBREAKS.map(o=><option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>}
+
+                  {cfg.tournamentSystem==="suizo" && cfg.swissPairingMode === "points_only" && (
+                    <div style={{gridColumn:"span 3"}} className="toast">
+                      <b>Modo activo:</b> en sistema suizo se empareja por <b>puntos más similares</b> sin tener en cuenta las victorias,
+                      y el <b>ranking final</b> se ordena por <b>puntos</b>.
+                    </div>
+                  )}
+
+                  {cfg.tournamentSystem === "suizo" && cfg.swissPairingMode === "wins_then_points" && (
+                    <div style={{gridColumn:"span 3"}} className="toast">
+                      <b>Modo activo:</b> en sistema suizo se empareja por <b>victorias</b> y luego por <b>puntos</b>,
+                      y el <b>ranking final</b> se ordena por <b>victorias → puntos</b>.
+                    </div>
+                  )}
 
                   {cfg.tournamentSystem==="oratoria" && <div><label>Nº de pruebas</label><input type="number" min="1" value={cfg.speechRounds} onChange={e=>setCfg({...cfg,speechRounds:Math.max(1,Number(e.target.value||1))})}/></div>}
 
@@ -1456,7 +1500,6 @@
               </div>
             )}
 
-            {/* EQUIPOS */}
             {tab==="equipos"&&(
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -1491,7 +1534,7 @@
                 )}
               </div>
             )}
-                        {/* GRUPOS */}
+
             {tab==="grupos" && cfg.tournamentSystem==="grupos" && (
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -1645,7 +1688,6 @@
               </div>
             )}
 
-            {/* SALAS */}
             {tab==="salas"&&(
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -1674,7 +1716,6 @@
               </div>
             )}
 
-            {/* JUECES */}
             {tab==="jueces"&&(
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -1704,7 +1745,6 @@
               </div>
             )}
 
-            {/* RONDAS */}
             {tab==="rondas"&&(
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -1758,7 +1798,15 @@
                       <>
                         <div className="toolbar" style={{justifyContent:"space-between",marginBottom:12}}>
                           <h3 style={{margin:0}}>{rounds[curRound]?.name||`Ronda ${rounds[curRound]?.number}`}</h3>
-                          <span className="muted small">{cfg.tournamentSystem==="oratoria" ? <>Prueba <b>{curRound+1}</b> de <b>{cfg.speechRounds}</b></> : <>Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada + alternancia)"}</b> · Desempate: <b>{cfg.tiebreak}</b></>}</span>
+                          <span className="muted small">
+                            {cfg.tournamentSystem==="oratoria"
+                              ? <>Prueba <b>{curRound+1}</b> de <b>{cfg.speechRounds}</b></>
+                              : <>
+                                  Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada + alternancia)"}</b>
+                                  {cfg.tournamentSystem==="suizo" && <> · Suizo: <b>{cfg.swissPairingMode === "points_only" ? "Puntos más similares" : "Victorias → Puntos"}</b></>}
+                                  · Desempate: <b>{cfg.tiebreak}</b>
+                                </>}
+                          </span>
                         </div>
 
                         <div className="stack">
@@ -1896,7 +1944,6 @@
                                   </div>
                                 </div>
 
-                                {/* ✅ NUEVO: PUNTOS DE ORADORES POR RONDA */}
                                 {m.sidesAssigned && (
                                   <div className="toast" style={{marginTop:12}}>
                                     <b>🗣️ Puntos de oradores (esta ronda)</b>
@@ -1969,7 +2016,6 @@
               </div>
             )}
 
-            {/* RANKING */}
             {tab==="ranking"&&(
               <div className="card">
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
@@ -1992,11 +2038,17 @@
                         <div className="muted small" style={{marginTop:6}}>
                           En oratoria, el ranking del equipo es la suma de las puntuaciones de todos sus oradores en todas las pruebas.
                         </div>
+                      </> : cfg.tournamentSystem === "suizo" && cfg.swissPairingMode === "points_only" ? <>
+                        <b>Orden del ranking:</b> <b>Puntos</b>
+                        <div className="muted small" style={{marginTop:6}}>
+                          En este modo suizo, los equipos se emparejan por <b>puntos más similares</b> y el ranking final se ordena por <b>puntos</b>.
+                          Las victorias siguen registrándose como dato informativo, pero no son el criterio principal del ranking.
+                        </div>
                       </> : <>
                         <b>Orden del ranking:</b> <b>Victorias</b> → <b>Puntos</b>
                         <div className="muted small" style={{marginTop:6}}>
                           Un equipo suma <b>1 victoria</b> si en el match completado sus puntos son mayores que los del rival.
-                          Si empatan en victorias y puntos, se aplica: <b>{cfg.tiebreak}</b>.
+                          Si empatan en el criterio principal, se aplica: <b>{cfg.tiebreak}</b>.
                         </div>
                       </>}
                     </div>
@@ -2085,7 +2137,16 @@
                       <>
                         <h3 style={{marginTop:0}}>Ranking de equipos</h3>
                         <div className="table-wrap"><table>
-                          <thead><tr><th>Pos</th><th>Equipo</th><th>Institución</th><th>Victorias</th><th>Puntos</th><th>A/E</th></tr></thead>
+                          <thead>
+                            <tr>
+                              <th>Pos</th>
+                              <th>Equipo</th>
+                              <th>Institución</th>
+                              <th>Victorias</th>
+                              <th>Puntos</th>
+                              <th>A/E</th>
+                            </tr>
+                          </thead>
                           <tbody>{standings.map((t,i)=>(
                             <tr key={t.id}>
                               <td><b>{i+1}</b></td>
@@ -2117,7 +2178,6 @@
         );
       }
 
-      // ✅ Ranking de oradores SUMANDO puntos por ronda (favorSpeakerPoints/contraSpeakerPoints)
       function SpeakerRanking({computed, rounds, tournamentSystem}){
         const [role,setRole]=useState("TODOS");
 
