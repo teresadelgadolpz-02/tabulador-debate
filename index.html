@@ -70,6 +70,7 @@
       .pill.green { background:#d1fae5; color:#065f46; }
       .pill.orange { background:#fef3c7; color:#92400e; }
       .pill.blue { background:#dbeafe; color:#1d4ed8; }
+      .pill.purple { background:#ede9fe; color:#5b21b6; }
       .spacer { height:10px; }
       .hr { height:1px; background:#eee; margin:12px 0; }
       .right { text-align:right; }
@@ -93,6 +94,12 @@
       .score-sep { color:var(--muted); font-weight:700; }
       .miniGrid { display:grid; grid-template-columns:1fr 100px; gap:8px; align-items:center; }
       .miniGrid input { padding:7px 9px; }
+
+      /* Manual round builder styles */
+      .manual-pair-row { display:grid; grid-template-columns:1fr 36px 1fr 40px; gap:8px; align-items:center; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; }
+      .manual-pair-row .vs-sep { text-align:center; font-weight:700; color:var(--muted); font-size:13px; }
+      @media(max-width:700px){ .manual-pair-row{grid-template-columns:1fr 1fr;} .manual-pair-row .vs-sep{display:none;} }
+      .manual-builder { border:2px dashed var(--brand-border); border-radius:14px; padding:18px; background:rgba(147,2,3,0.02); }
     </style>
   </head>
 
@@ -186,6 +193,9 @@
         "Votos > Enfrentamiento directo > Ítems","Votos > Ítems > Enfrentamiento directo"
       ];
 
+      // ─── Empty manual pair ───────────────────────────────────────────
+      function emptyPair() { return { id: uid(), teamA: "", teamB: "" }; }
+
       function App() {
         const [auth, setAuth] = useState(false);
         const [user, setUser] = useState(null);
@@ -209,7 +219,7 @@
           roundsClasif:6,
           roundsFinales:4,
           tournamentSystem:"suizo",
-          swissPairingMode:"wins_then_points", // wins_then_points | points_only
+          swissPairingMode:"wins_then_points",
           allowRepeatMatchups:false,
           numGroups:4,
           groupSize:4,
@@ -230,6 +240,11 @@
         const [tab, setTab] = useState("torneos");
         const [editRnd, setEditRnd] = useState(null);
         const [rndTmp, setRndTmp] = useState("");
+
+        // ─── Manual round builder state ───────────────────────────────
+        const [showManualBuilder, setShowManualBuilder] = useState(false);
+        const [manualPairs, setManualPairs] = useState([emptyPair()]);
+        const [manualRoundName, setManualRoundName] = useState("");
 
         const hasTournament = !!tid;
 
@@ -367,6 +382,7 @@
             speechRounds:3
           });
           setTeams([]);setRounds([]);setRooms([]);setJudges([]);setGroups([]);setCurRound(0);
+          setShowManualBuilder(false); setManualPairs([emptyPair()]); setManualRoundName("");
         }
         async function deleteTournament(id) {
           if(!confirm("¿Eliminar este torneo?")) return;
@@ -861,6 +877,92 @@
           setTab("rondas");
         }
 
+        // ─── MANUAL ROUND BUILDER ────────────────────────────────────────
+        function openManualBuilder(){
+          setManualPairs([emptyPair()]);
+          setManualRoundName(`Ronda ${rounds.length+1}`);
+          setShowManualBuilder(true);
+          setTab("rondas");
+        }
+
+        function cancelManualBuilder(){
+          setShowManualBuilder(false);
+          setManualPairs([emptyPair()]);
+          setManualRoundName("");
+        }
+
+        function updManualPair(id, field, value){
+          setManualPairs(prev => prev.map(p => p.id===id ? {...p, [field]: value} : p));
+        }
+
+        function addManualPair(){
+          setManualPairs(prev => [...prev, emptyPair()]);
+        }
+
+        function removeManualPair(id){
+          setManualPairs(prev => prev.filter(p => p.id !== id));
+        }
+
+        function confirmManualRound(){
+          // Validate: all pairs must have two different teams selected
+          const valid = manualPairs.filter(p => p.teamA && p.teamB && p.teamA !== p.teamB);
+          if(valid.length === 0){
+            alert("Añade al menos un enfrentamiento con dos equipos distintos.");
+            return;
+          }
+          const invalid = manualPairs.find(p => (p.teamA || p.teamB) && (!p.teamA || !p.teamB));
+          if(invalid){
+            alert("Hay enfrentamientos incompletos. Selecciona los dos equipos o elimina la fila.");
+            return;
+          }
+          const sameTeam = manualPairs.find(p => p.teamA && p.teamB && p.teamA === p.teamB);
+          if(sameTeam){
+            alert("Un equipo no puede enfrentarse a sí mismo.");
+            return;
+          }
+
+          // Build matches
+          let ms = valid.map(p => {
+            const t1 = teams.find(t => t.id === p.teamA);
+            const t2 = teams.find(t => t.id === p.teamB);
+            return makeMatch(t1, t2);
+          });
+
+          ms = assignRJ(ms);
+
+          if(cfg.sideAssignmentMode !== "sin_asignar"){
+            ms = assignSidesForRound(ms, computed);
+          }
+
+          const nr = {
+            number: rounds.length + 1,
+            name: manualRoundName.trim() || `Ronda ${rounds.length+1}`,
+            matches: ms,
+            isClassificatory: rounds.length < Number(cfg.roundsClasif||0),
+            sideMode: cfg.sideAssignmentMode,
+            isManual: true
+          };
+
+          const newRounds = [...rounds, nr];
+          setRounds(newRounds);
+          setCurRound(newRounds.length - 1);
+          setShowManualBuilder(false);
+          setManualPairs([emptyPair()]);
+          setManualRoundName("");
+          showToast("✅ Ronda manual creada", `${valid.length} enfrentamiento${valid.length!==1?"s":""} añadido${valid.length!==1?"s":""}.`);
+        }
+
+        // Detect teams already used in current manual pairs (to warn about duplicates)
+        function usedTeamsInManualPairs(){
+          const used = new Map(); // teamId -> count
+          for(const p of manualPairs){
+            if(p.teamA) used.set(p.teamA, (used.get(p.teamA)||0)+1);
+            if(p.teamB) used.set(p.teamB, (used.get(p.teamB)||0)+1);
+          }
+          return used;
+        }
+        // ────────────────────────────────────────────────────────────────
+
         function genSwiss(){
           const sorted = [...computed].sort((a,b)=>{
             if(cfg.swissPairingMode === "points_only"){
@@ -1323,6 +1425,9 @@
           </div>
         );
 
+        // Detect duplicate teams in manual builder
+        const usedTeams = showManualBuilder ? usedTeamsInManualPairs() : new Map();
+
         return (
           <div className="row" style={{gap:12}}>
             <div className="card" style={{padding:"12px 14px"}}>
@@ -1495,6 +1600,11 @@
                 </div>
                 <div className="hr"></div>
                 <div className="toolbar" style={{justifyContent:"flex-end"}}>
+                  {cfg.tournamentSystem !== "oratoria" && (
+                    <button className="sm" onClick={openManualBuilder} disabled={teams.length < 2}>
+                      ✏️ Ronda manual
+                    </button>
+                  )}
                   <button className="primary" onClick={genPairings} disabled={computed.length<2 || (cfg.tournamentSystem==="oratoria" && rounds.length>=Number(cfg.speechRounds||1))}>{cfg.tournamentSystem==="oratoria" ? "🗣️ Generar prueba" : "🧩 Generar emparejamientos (nueva ronda)"}</button>
                 </div>
               </div>
@@ -1644,7 +1754,7 @@
                 <div className="spacer"></div>
 
                 {groups.length===0 ? (
-                  <div className="muted">Aún no hay grupos creados. Pulsa “🎲 Generar grupos automático” o asigna equipos manualmente.</div>
+                  <div className="muted">Aún no hay grupos creados. Pulsa "🎲 Generar grupos automático" o asigna equipos manualmente.</div>
                 ) : (
                   <div className="row cols2">
                     {groups.map(g=>{
@@ -1750,7 +1860,20 @@
                 <div className="toolbar" style={{justifyContent:"space-between"}}>
                   <h2 style={{margin:0}}>{cfg.tournamentSystem==="oratoria"?"Pruebas":"Rondas"}</h2>
                   <div className="toolbar">
-                    <button className="primary" onClick={genPairings} disabled={computed.length<2 || (cfg.tournamentSystem==="oratoria" && rounds.length>=Number(cfg.speechRounds||1))}>{cfg.tournamentSystem==="oratoria"?"➕ Nueva prueba":"➕ Nueva ronda"}</button>
+                    {cfg.tournamentSystem !== "oratoria" && (
+                      <button
+                        className="sm"
+                        onClick={()=>{
+                          if(showManualBuilder){ cancelManualBuilder(); }
+                          else { openManualBuilder(); }
+                        }}
+                        disabled={teams.length < 2}
+                        style={showManualBuilder ? {borderColor:"var(--brand)",color:"var(--brand)",background:"var(--brand-light)"} : {}}
+                      >
+                        {showManualBuilder ? "✕ Cancelar manual" : "✏️ Ronda manual"}
+                      </button>
+                    )}
+                    <button className="primary" onClick={genPairings} disabled={computed.length<2 || (cfg.tournamentSystem==="oratoria" && rounds.length>=Number(cfg.speechRounds||1))}>{cfg.tournamentSystem==="oratoria"?"➕ Nueva prueba":"🧩 Auto"}</button>
                     <button className="sm" onClick={()=>{ if(rounds.length===0) return alert("No hay rondas."); exportRoundPDF(curRound); }}>
                       📄 PDF (ronda)
                     </button>
@@ -1760,7 +1883,124 @@
 
                 <div className="spacer"></div>
 
-                {rounds.length===0?<div className="muted">{cfg.tournamentSystem==="oratoria" ? "No hay pruebas. Pulsa ‘Nueva prueba’." : "No hay rondas. Pulsa ‘Nueva ronda’."}</div>:(
+                {/* ── MANUAL ROUND BUILDER UI ─────────────────────────────── */}
+                {showManualBuilder && cfg.tournamentSystem !== "oratoria" && (
+                  <div className="manual-builder" style={{marginBottom:16}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}}>
+                      <h3 style={{margin:0}}>✏️ Nueva ronda manual</h3>
+                      <span className="pill purple">Manual</span>
+                      <div className="muted small">Define tú los enfrentamientos. Las salas, jueces y lados se asignan igual que en las rondas automáticas.</div>
+                    </div>
+
+                    <div className="row cols2" style={{marginBottom:14,maxWidth:480}}>
+                      <div>
+                        <label>Nombre de la ronda</label>
+                        <input
+                          value={manualRoundName}
+                          onChange={e=>setManualRoundName(e.target.value)}
+                          placeholder={`Ronda ${rounds.length+1}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="stack" style={{marginBottom:12}}>
+                      {manualPairs.map((p, idx) => {
+                        const t1 = teams.find(t=>t.id===p.teamA);
+                        const t2 = teams.find(t=>t.id===p.teamB);
+                        const dupA = p.teamA && (usedTeams.get(p.teamA)||0) > 1;
+                        const dupB = p.teamB && (usedTeams.get(p.teamB)||0) > 1;
+                        const sameTeam = p.teamA && p.teamB && p.teamA === p.teamB;
+
+                        return (
+                          <div key={p.id} className="manual-pair-row">
+                            <div>
+                              <select
+                                value={p.teamA}
+                                onChange={e=>updManualPair(p.id,"teamA",e.target.value)}
+                                style={dupA||sameTeam ? {borderColor:"var(--danger)"} : {}}
+                              >
+                                <option value="">(Equipo A)</option>
+                                {teams.map(t=>(
+                                  <option key={t.id} value={t.id}>{t.name||`Equipo sin nombre`}{t.school?` · ${t.school}`:""}</option>
+                                ))}
+                              </select>
+                              {dupA && <div style={{color:"var(--danger)",fontSize:11,marginTop:3}}>⚠ Ya usado en otro enfrentamiento</div>}
+                            </div>
+
+                            <div className="vs-sep">vs</div>
+
+                            <div>
+                              <select
+                                value={p.teamB}
+                                onChange={e=>updManualPair(p.id,"teamB",e.target.value)}
+                                style={dupB||sameTeam ? {borderColor:"var(--danger)"} : {}}
+                              >
+                                <option value="">(Equipo B)</option>
+                                {teams.map(t=>(
+                                  <option key={t.id} value={t.id}>{t.name||`Equipo sin nombre`}{t.school?` · ${t.school}`:""}</option>
+                                ))}
+                              </select>
+                              {sameTeam && <div style={{color:"var(--danger)",fontSize:11,marginTop:3}}>⚠ No puede enfrentarse a sí mismo</div>}
+                              {!sameTeam && dupB && <div style={{color:"var(--danger)",fontSize:11,marginTop:3}}>⚠ Ya usado en otro enfrentamiento</div>}
+                            </div>
+
+                            <div>
+                              <button
+                                className="danger sm"
+                                onClick={()=>removeManualPair(p.id)}
+                                disabled={manualPairs.length===1}
+                                title="Eliminar enfrentamiento"
+                              >🗑️</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="toolbar" style={{justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                      <button className="sm" onClick={addManualPair}>
+                        ➕ Añadir enfrentamiento
+                      </button>
+                      <div className="toolbar">
+                        <div className="muted small">
+                          {cfg.sideAssignmentMode==="sin_asignar"
+                            ? "Lados: sin asignar (se sortean fuera)"
+                            : "Lados: se asignarán automáticamente"}
+                        </div>
+                        <button className="sm" onClick={cancelManualBuilder}>Cancelar</button>
+                        <button
+                          className="primary"
+                          onClick={confirmManualRound}
+                          disabled={manualPairs.every(p=>!p.teamA&&!p.teamB)}
+                        >
+                          ✅ Crear ronda manual
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Teams not yet included */}
+                    {(() => {
+                      const usedIds = new Set([...manualPairs.map(p=>p.teamA), ...manualPairs.map(p=>p.teamB)].filter(Boolean));
+                      const unused = teams.filter(t=>!usedIds.has(t.id));
+                      if(!unused.length) return null;
+                      return (
+                        <div style={{marginTop:12}}>
+                          <div className="muted small" style={{marginBottom:6}}>
+                            <b>Equipos sin enfrentamiento asignado:</b>
+                          </div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {unused.map(t=>(
+                              <span key={t.id} className="pill orange">{t.name||"Sin nombre"}{t.school?` · ${t.school}`:""}</span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+                {/* ──────────────────────────────────────────────────────── */}
+
+                {rounds.length===0?<div className="muted">{cfg.tournamentSystem==="oratoria" ? "No hay pruebas. Pulsa 'Nueva prueba'." : "No hay rondas. Pulsa '🧩 Auto' o '✏️ Ronda manual'."}</div>:(
                   <>
                     <div className="stack" style={{marginBottom:12}}>
                       {rounds.map((r,idx)=>{
@@ -1778,6 +2018,7 @@
                               ):<b>{r.name||`Ronda ${r.number}`}</b>}
                               <span className={"pill "+(comp===tot&&tot>0?"green":comp>0?"orange":"")}>{comp}/{tot} completados</span>
                               {cfg.tournamentSystem!=="oratoria" && r.isClassificatory&&<span className="pill">Clasificatoria</span>}
+                              {cfg.tournamentSystem!=="oratoria" && r.isManual&&<span className="pill purple">Manual</span>}
                               {cfg.tournamentSystem!=="oratoria" && r.sideMode && <span className="pill blue">Lados: {r.sideMode==="sin_asignar"?"No asignar":"Automática"}</span>}
                             </div>
                             <div className="toolbar" onClick={e=>e.stopPropagation()}>
@@ -1802,6 +2043,7 @@
                             {cfg.tournamentSystem==="oratoria"
                               ? <>Prueba <b>{curRound+1}</b> de <b>{cfg.speechRounds}</b></>
                               : <>
+                                  {rounds[curRound]?.isManual && <><span className="pill purple" style={{marginRight:6}}>Manual</span></>}
                                   Lados: <b>{(rounds[curRound]?.sideMode||cfg.sideAssignmentMode)==="sin_asignar" ? "No asignar (se sortea fuera)" : "Automática (balanceada + alternancia)"}</b>
                                   {cfg.tournamentSystem==="suizo" && <> · Suizo: <b>{cfg.swissPairingMode === "points_only" ? "Puntos más similares" : "Victorias → Puntos"}</b></>}
                                   · Desempate: <b>{cfg.tiebreak}</b>
